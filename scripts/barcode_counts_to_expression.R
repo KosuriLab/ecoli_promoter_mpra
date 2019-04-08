@@ -168,17 +168,12 @@ neg_sd_sum <- sd(negatives$RNA_exp_sum_ave)
 neg_median_sum <- median(negatives$RNA_exp_sum_ave, na.rm = T)
 threshold_sum <- 2*neg_sd_sum + neg_median_sum
 print(paste("Active threshold (sum):", threshold_sum))
-print("Standardize so threshold = 1")
 
 neg_sd_med <- sd(negatives$expn_med)
 neg_median_med <- median(negatives$expn_med, na.rm = T)
 threshold_med <- 2*neg_sd_med + neg_median_med
 print(paste("Active threshold (median):", threshold_med))
-print("Standardize so threshold = 1")
 
-expression <- expression %>% 
-    mutate(expn_sum_std = RNA_exp_sum_ave - threshold_sum,
-           expn_med_std = expn_med - threshold_med)
 
 write.table(expression, output_name, quote = F, row.names = F)
 
