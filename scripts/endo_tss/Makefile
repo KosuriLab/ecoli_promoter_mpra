@@ -46,14 +46,14 @@ $(DATA)/endo_lb_bc_map.txt: $(MERGE_DEST)/endo_lb_merged.fastq
 
 
 $(DATA)/endo_lb_controls_bc_map.txt: $(MERGE_DEST)/endo_lb_merged.fastq
-	@ python ../barcode_mapping_ecoli_pos_controls.py $<  \
+	@ python ../barcode_mapping_ecoli_pos_controls.py $<  fastq \
 	../../ref/synthetic_promoter_pos_controls_formatted.fasta 0 end 20 $(DATA)/endo_lb_controls
 	@ rm -f $(DATA)/endo_lb_controls_bbmap.sam
 
 # RNA barcode counting
 
 # use one FASTQ file to trigger barcode counting for all FASTQ files
-$(DATA)/counts_rLP5_Endo2_DNA1.txt: | $(RAW_DATA)/DNA_RNA/rLP5_Endo2_DNA1.fastq
+$(DATA)/counts_rLP5_Endo2_DNA1.txt: | $(RAW_DATA)/DNA_RNA/rLP5_Endo2_DNA1.fastq.gz
 	@ ../count_barcodes.sh $(RAW_DATA)/DNA_RNA
 	@ mv counts* $(DATA)
 

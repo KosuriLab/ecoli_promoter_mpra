@@ -1,2 +1,7 @@
-*.fastq.gz
-*.fastq
+processed_data/endo_tss/lb/bc_map_consensus_bad_bcs.txt
+processed_data/endo_tss/lb/merged_reads/pEndo2_84.paired.discarded.fastq
+processed_data/endo_tss/lb/merged_reads/pEndo2_85.paired.discarded.fastq
+processed_data/endo_tss/lb/merged_reads/pEndo2_84.paired.assembled.fastq
+processed_data/endo_tss/lb/merged_reads/pEndo2_85.paired.assembled.fastq
+processed_data/endo_tss/lb/merged_reads/endo_lb_merged.fastq
+processed_data/endo_tss/lb/endo_lb_bc_map.txt
