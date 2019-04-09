@@ -16,7 +16,7 @@ data <- read.table(file = infile, header = T)
 data <- data %>% 
     mutate(name = gsub('>', '', orig_name),
            name = gsub('_rc', '', name)) %>% 
-    separate(name, into = c('source', 'tss_pos', 'strand'), sep = ',', remove = F) %>% 
+    separate(name, into = c('tss_name', 'tss_position', 'strand'), sep = ',', remove = F) %>% 
     select(name:strand, variant:num_barcodes_integrated, -orig_name)
 
 data$category <- "tss"
