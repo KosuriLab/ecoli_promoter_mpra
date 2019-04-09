@@ -32,9 +32,26 @@ scramble$expn_med_fitted <- predict(wt_robust_fit,
 # peak_tile$expn_med_fitted <- predict(wt_robust_fit, 
 #                                      select(peak_tile, expn_med_scramble = expn_med))
 
-# we do not need to scale TSS because it's the standard, but just create a "fitted"
+# we do not need to scale TSS because it's the standard, but create a "fitted"
 # column for consistency
 tss$expn_med_fitted <- tss$expn_med
+
+set_std_threshold <- function(df) {
+    neg <- filter(df, category == 'neg_control')
+    neg_sd <- sd(neg$expn_med_fitted)
+    neg_median <- median(neg$expn_med_fitted)
+    threshold <- neg_median + (2 * neg_sd)
+    scale = 1 / threshold
+    return(df$expn_med_fitted * scale)
+}
+
+wt_scramble <- scramble %>% 
+    filter(category == 'unscrambled') %>% 
+    left_join(select(tss, tss_name, RNA_exp_sum_ave, expn_med_fitted_scaled), by = 'tss_name',
+              suffix = c('_scramble', '_tss'))
+
+tss$expn_med_fitted_scaled <- set_std_threshold(tss)
+scramble$expn_med_fitted_scaled <- set_std_threshold(scramble)
 
 write.table(tss, file = '../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
