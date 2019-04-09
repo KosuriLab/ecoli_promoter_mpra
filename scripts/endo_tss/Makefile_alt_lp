@@ -1,0 +1,34 @@
+MERGE_DEST=../../processed_data/endo_tss/alt_landing_pads
+RAW_DATA=../../raw_data/endo_tss/alt_landing_pads
+DATA=../../processed_data/endo_tss/alt_landing_pads
+MAP_DATA=../../processed_data/endo_tss/lb
+
+
+barcode_counts: $(DATA)/counts_fLP3_endo2_DNA1_1.txt $(DATA)/counts_rLP6_Endo2_LB_DNA1_1.txt
+
+expression_flp3: $(DATA)/fLP3/fLP3_Endo2_lb_expression.txt
+
+expression_rlp6: $(DATA)/rLP6/rLP6_Endo2_lb_expression.txt
+
+
+# use one FASTQ file to trigger barcode counting for all FASTQ files
+$(DATA)/fLP3/counts_fLP3_endo2_DNA1_1.txt: | $(RAW_DATA)/fLP3/DNA_RNA/fLP3_endo2_DNA1_1.fastq.gz
+	@ ../count_barcodes.sh $(RAW_DATA)/fLP3/DNA_RNA
+	@ mv counts* $(DATA)/fLP3
+
+
+$(DATA)/rLP6/counts_rLP6_Endo2_LB_DNA1_1.txt: | $(RAW_DATA)/rLP6/DNA_RNA/rLP6_Endo2_LB_DNA1_1.fastq.gz
+	@ ../count_barcodes.sh $(RAW_DATA)/rLP6/DNA_RNA
+	@ mv counts* $(DATA)/rLP6
+
+
+$(DATA)/fLP3/fLP3_Endo2_lb_expression.txt: $(DATA)/fLP3/counts_fLP3_endo2_DNA1_1.txt
+	@ Rscript --vanilla ../barcode_counts_to_expression.R $(DATA)/fLP3 \
+	$(MAP_DATA)/endo_lb_bc_map.txt $(MAP_DATA)/endo_lb_controls_bc_map.txt \
+	 ../../ref/endo_lib_2016_controls_clean.txt $@
+
+
+$(DATA)/rLP6/rLP6_Endo2_lb_expression.txt: $(DATA)/rLP6/counts_rLP6_Endo2_LB_DNA1_1.txt
+	@ Rscript --vanilla ../barcode_counts_to_expression.R $(DATA)/rLP6 \
+	$(MAP_DATA)/endo_lb_bc_map.txt $(MAP_DATA)/endo_lb_controls_bc_map.txt \
+	 ../../ref/endo_lib_2016_controls_clean.txt $@
