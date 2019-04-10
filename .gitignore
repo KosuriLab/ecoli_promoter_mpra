@@ -13,6 +13,14 @@ processed_data/peak_tile/merged_reads/pPeakTiling_82_combined.paired.discarded.f
 processed_data/peak_tile/merged_reads/pPeakTiling_82_combined.paired.assembled.fastq
 processed_data/peak_tile/merged_reads/pPeakTiling_83_combined.paired.assembled.fastq
 processed_data/peak_tile/bc_map_consensus_bad_bcs.txt
+processed_data/frag/5prime.txt
+processed_data/frag/sam_stats.txt
+processed_data/frag/3prime.txt
+processed_data/frag/pFrag_80.txt
+processed_data/frag/barcode_maps.txt
+processed_data/frag/pFrag_83.txt
+processed_data/frag/frag_stats.txt
+processed_data/frag/U00096.2_Align.sam
 processed_data/endo_scramble/bc_map_consensus_bad_bcs.txt
 processed_data/endo_scramble/endo_scramble_combined_bc_map.txt
 processed_data/endo_scramble/merged_reads/pEndoScramble_81_combined.paired.discarded.fastq
@@ -21,3 +29,4 @@ processed_data/endo_scramble/merged_reads/pEndoScramble_80_combined.paired.assem
 processed_data/endo_scramble/merged_reads/pEndoScramble_81_combined.paired.assembled.fastq
 processed_data/endo_scramble/merged_reads/endo_scramble_combined_merged.fastq
 processed_data/endo_scramble/endo_scramble_combined_controls_bbmap.sam
+scripts/frag/FragmentBarcodes.txt

@@ -1,0 +1,112 @@
+DATA=../../processed_data/frag_peak_calling
+RAW_DATA=../../raw_data/frag
+LIB=../../processed_data/lib_gen
+DATE=$(shell date +%Y%m%d)
+
+all: pileup call_peaks
+
+pileup: $(DATA)/m9/plus_frag_pileup_M9.wig
+
+call_peaks: $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
+
+peak_tile_lib: $(LIB)/$(DATE)_m9_peak_tile_lib.txt
+
+# map: $(DATA)/frag_stats.txt
+
+# barcode_count: $(DATA)/m9/rLP5_frag_DNA1_1.txt
+
+# expression: $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt
+
+
+### Fragment barcode mapping ###
+$(DATA)/pFrag_80.txt: $(RAW_DATA)/bc_map/pFrag-80_S1_L001_R2_001.fastq 
+	@ ./split_pe_reads.sh $(RAW_DATA)/bc_map/pFrag-80
+	@ mv pFrag-80.txt $(DATA)/pFrag_80.txt
+
+
+$(DATA)/pFrag_83.txt: | $(RAW_DATA)/bc_map/pFrag-83_S2_L001_R1_001.fastq
+	@ ./split_pe_reads.sh $(RAW_DATA)/bc_map/pFrag-83
+	@ mv pFrag-83.txt $(DATA)/pFrag_83.txt
+
+
+$(DATA)/5prime.txt: $(DATA)/pFrag_80.txt $(DATA)/pFrag_83.txt
+	@ ./format_pe_reads.sh $(DATA)
+
+
+# Map paired end reads
+$(DATA)/U00096.2_Align.sam: $(DATA)/5prime.txt
+	@ echo "Mapping reads..."
+	@ bowtie2 --seed 123 --fr -r -p20 -x ../../ref/Ecoli_MG1655_K12 \
+	-1 $(DATA)/5prime.txt -2 $(DATA)/3prime.txt -S $(DATA)/U00096.2_Align.sam
+
+
+$(DATA)/sam_stats.txt: $(DATA)/U00096.2_Align.sam
+	@ ./frag_sam2bed.sh $(DATA)
+
+
+$(DATA)/frag_stats.txt: $(DATA)/sam_stats.txt
+	@ ./frag_fasta2bed.sh $(DATA)
+	@ rm FragmentBarcodes.txt 
+
+
+### DNA and RNA sequencing post-mapping ###	
+$(DATA)/m9/rLP5_frag_DNA1_1.txt: $(RAW_DATA)/DNA_RNA/m9/rLP5_Frag_M9_DNA1_1_S9_L002_R1_001.fastq 
+	@ ./frag_barcode_counting.sh $(RAW_DATA)/DNA_RNA/m9 $(DATA)/m9
+
+
+$(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt: $(DATA)/frag_stats.txt
+	@ echo "Barcode counts to expression..."
+	@ Rscript BC_counts2FragExpression_M9.R
+
+
+# fragment expression pileup - get expression of each fragment at every position, this will create both strands
+$(DATA)/m9/plus_frag_pileup_M9.wig: $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt
+	@ echo "Pileup..."
+	@ python frag_expression_pileup.py $< frag_pileup_M9.wig 50
+	@ mv plus_frag_pileup_M9.wig $(DATA)/m9
+	@ mv minus_frag_pileup_M9.wig $(DATA)/m9
+
+
+### call peaks based on fragment expression pileup ###
+$(DATA)/m9/U00096.2_M9_plus_called_peaks_threshold1.1_merge40_min60.bed: $(DATA)/m9/plus_frag_pileup_M9.wig
+	@ echo "Calling peaks plus strand..."
+	@ python call_peaks.py $< 1.1 40 60 + $@
+
+
+$(DATA)/m9/U00096.2_M9_minus_called_peaks_threshold1.1_merge40_min60.bed: $(DATA)/m9/minus_frag_pileup_M9.wig
+	@ echo "Calling peaks minus strand.."
+	@ python call_peaks.py $< 1.1 40 60 - $@
+
+
+$(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed: \
+	$(DATA)/m9/U00096.2_M9_plus_called_peaks_threshold1.1_merge40_min60.bed \
+	$(DATA)/m9/U00096.2_M9_minus_called_peaks_threshold1.1_merge40_min60.bed
+	 @ echo "Combining peaks..."
+	 @ cat $^ > $@
+
+
+$(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta: \
+	$(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed
+	@ echo "Converting to FASTA..."
+	@ bedtools getfasta -fi ../../ref/U00096.2.fasta -bed  $< -fo $@ -name -s
+
+
+# # peak tiling library
+# #$(LIB)/$(DATE)_lb_peak_tile_lib.txt: $(DATA)/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
+# #	@ echo "Generating peak tiling library..."
+# #	@ python peak_tiling.py $< $(LIB)/neg_controls_no_primers.txt \
+# #	../../ref/synthetic_promoter_pos_controls.csv 10 150 $@ $(LIB)/re_sites.fasta --n_random 1000 --rand_length 150
+
+
+#print-%  : ; @echo $* = $($*)
+
+
+
+
+
+
+
+
+
+
+
