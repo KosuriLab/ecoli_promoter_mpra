@@ -9,7 +9,6 @@ pileup: $(DATA)/m9/plus_frag_pileup_M9.wig
 
 call_peaks: $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
 
-
 map: $(DATA)/frag_stats.txt
 
 barcode_count: $(DATA)/m9/rLP5_frag_DNA1_1.txt
@@ -56,7 +55,8 @@ $(DATA)/m9/rLP5_frag_DNA1_1.txt: $(RAW_DATA)/DNA_RNA/m9/rLP5_Frag_M9_DNA1_1_S9_L
 
 $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt: $(DATA)/frag_stats.txt
 	@ echo "Barcode counts to expression..."
-	@ Rscript BC_counts2FragExpression_M9.R
+	@ Rscript --vanilla barcode_counts_to_expression_frag.R $(DATA)/m9 $(DATA)/barcode_maps.txt $< $@
+
 
 
 # fragment expression pileup - get expression of each fragment at every position, this will create both strands
