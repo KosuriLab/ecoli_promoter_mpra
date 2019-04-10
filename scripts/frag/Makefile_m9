@@ -1,7 +1,7 @@
-DATA=../../processed_data/frag_peak_calling
+DATA=../../processed_data/frag
 RAW_DATA=../../raw_data/frag
-LIB=../../processed_data/lib_gen
-DATE=$(shell date +%Y%m%d)
+# LIB=../../processed_data/lib_gen
+# DATE=$(shell date +%Y%m%d)
 
 all: pileup call_peaks
 
@@ -9,13 +9,12 @@ pileup: $(DATA)/m9/plus_frag_pileup_M9.wig
 
 call_peaks: $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
 
-peak_tile_lib: $(LIB)/$(DATE)_m9_peak_tile_lib.txt
 
-# map: $(DATA)/frag_stats.txt
+map: $(DATA)/frag_stats.txt
 
-# barcode_count: $(DATA)/m9/rLP5_frag_DNA1_1.txt
+barcode_count: $(DATA)/m9/rLP5_frag_DNA1_1.txt
 
-# expression: $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt
+expression: $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt
 
 
 ### Fragment barcode mapping ###
@@ -50,8 +49,9 @@ $(DATA)/frag_stats.txt: $(DATA)/sam_stats.txt
 
 
 ### DNA and RNA sequencing post-mapping ###	
-$(DATA)/m9/rLP5_frag_DNA1_1.txt: $(RAW_DATA)/DNA_RNA/m9/rLP5_Frag_M9_DNA1_1_S9_L002_R1_001.fastq 
-	@ ./frag_barcode_counting.sh $(RAW_DATA)/DNA_RNA/m9 $(DATA)/m9
+$(DATA)/m9/rLP5_frag_DNA1_1.txt: $(RAW_DATA)/DNA_RNA/m9/rLP5_Frag_M9_DNA1_1_S9_L002_R1_001.fastq.gz 
+	@ ../count_barcodes.sh $(RAW_DATA)/DNA_RNA/m9
+	@ mv counts* $(DATA)/m9
 
 
 $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt: $(DATA)/frag_stats.txt
@@ -89,13 +89,6 @@ $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta:
 	$(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed
 	@ echo "Converting to FASTA..."
 	@ bedtools getfasta -fi ../../ref/U00096.2.fasta -bed  $< -fo $@ -name -s
-
-
-# # peak tiling library
-# #$(LIB)/$(DATE)_lb_peak_tile_lib.txt: $(DATA)/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
-# #	@ echo "Generating peak tiling library..."
-# #	@ python peak_tiling.py $< $(LIB)/neg_controls_no_primers.txt \
-# #	../../ref/synthetic_promoter_pos_controls.csv 10 150 $@ $(LIB)/re_sites.fasta --n_random 1000 --rand_length 150
 
 
 #print-%  : ; @echo $* = $($*)

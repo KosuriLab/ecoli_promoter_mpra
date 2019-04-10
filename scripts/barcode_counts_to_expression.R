@@ -90,11 +90,14 @@ ref_with_rc <- ref %>%
 bc_map <- bc_map %>% 
     left_join(select(ref_with_rc, -sequence), by = 'variant')
 
-# add in positive controls
-bc_map_controls <- read.table(bc_map_file_controls, header = T, 
-                           col.names = c('barcode', 'num_unique_variant', 'count',
-                                         'count_most_common', 'variant', 'name'))
-bc_map <- bind_rows(bc_map, select(bc_map_controls, barcode, variant, count, name))
+# add in positive controls, if not a dummy file
+bc_map_controls <- read.table(bc_map_file_controls, header = T)
+if(nrow(bc_map_controls) != 1) {
+    names(bc_map_controls) <- c('barcode', 'num_unique_variant', 'count',
+                                'count_most_common', 'variant', 'name')
+    bc_map <- bind_rows(bc_map, select(bc_map_controls, barcode, variant, count, name))
+} 
+
 print(paste("Number of barcodes in mapping run:", nrow(bc_map)))
 
 # only keep those that match reference
