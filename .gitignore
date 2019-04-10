@@ -5,6 +5,14 @@ processed_data/endo_tss/lb/merged_reads/pEndo2_84.paired.assembled.fastq
 processed_data/endo_tss/lb/merged_reads/pEndo2_85.paired.assembled.fastq
 processed_data/endo_tss/lb/merged_reads/endo_lb_merged.fastq
 processed_data/endo_tss/lb/endo_lb_bc_map.txt
+processed_data/peak_tile/peak_tile_combined_controls_bbmap.sam
+processed_data/peak_tile/peak_tile_combined_bc_map.txt
+processed_data/peak_tile/merged_reads/peak_tile_combined_merged.fastq
+processed_data/peak_tile/merged_reads/pPeakTiling_83_combined.paired.discarded.fastq
+processed_data/peak_tile/merged_reads/pPeakTiling_82_combined.paired.discarded.fastq
+processed_data/peak_tile/merged_reads/pPeakTiling_82_combined.paired.assembled.fastq
+processed_data/peak_tile/merged_reads/pPeakTiling_83_combined.paired.assembled.fastq
+processed_data/peak_tile/bc_map_consensus_bad_bcs.txt
 processed_data/endo_scramble/bc_map_consensus_bad_bcs.txt
 processed_data/endo_scramble/endo_scramble_combined_bc_map.txt
 processed_data/endo_scramble/merged_reads/pEndoScramble_81_combined.paired.discarded.fastq
