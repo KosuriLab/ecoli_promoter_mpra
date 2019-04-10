@@ -53,6 +53,15 @@ wt_scramble <- scramble %>%
 tss$expn_med_fitted_scaled <- set_std_threshold(tss)
 scramble$expn_med_fitted_scaled <- set_std_threshold(scramble)
 
+# now that expression is standardized, calculate change in expression for scramble
+# calculate change in expression: unscramble - scramble
+scramble <- scramble %>% 
+    group_by(tss_name) %>% 
+    mutate(unscrambled_exp = ifelse(any(category == 'unscramble'),
+                                    RNA_exp_sum_ave[category == 'unscramble'],
+                                    NA),
+           relative_exp = RNA_exp_sum_ave / unscrambled_exp)
+
 write.table(tss, file = '../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
 write.table(scramble, file = '../processed_data/endo_scramble/endo_scramble_expression_formatted_std.txt',

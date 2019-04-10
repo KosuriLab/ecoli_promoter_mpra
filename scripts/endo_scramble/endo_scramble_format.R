@@ -38,7 +38,6 @@ data <- data %>%
     select(name:scramble_pos_rel_tss, variant, RNA_exp_sum_1_1:num_barcodes_integrated)
 
 
-
 data$category <- "scramble"
 data$category[grep("pos_control", data$name)] <- "pos_control"
 data$category[grep("neg_control", data$name)] <- "neg_control"
