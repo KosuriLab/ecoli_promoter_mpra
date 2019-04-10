@@ -3,12 +3,13 @@ RAW_DATA=../../raw_data/endo_tss/alt_landing_pads
 DATA=../../processed_data/endo_tss/alt_landing_pads
 MAP_DATA=../../processed_data/endo_tss/lb
 
-
+all: format
+	
 barcode_counts: $(DATA)/counts_fLP3_endo2_DNA1_1.txt $(DATA)/counts_rLP6_Endo2_LB_DNA1_1.txt
 
-expression_flp3: $(DATA)/fLP3/fLP3_Endo2_lb_expression.txt
+expression: $(DATA)/fLP3/fLP3_Endo2_lb_expression.txt $(DATA)/rLP6/rLP6_Endo2_lb_expression.txt
 
-expression_rlp6: $(DATA)/rLP6/rLP6_Endo2_lb_expression.txt
+format: $(DATA)/fLP3/fLP3_Endo2_lb_expression_formatted.txt $(DATA)/rLP6/rLP6_Endo2_lb_expression_formatted.txt
 
 
 # use one FASTQ file to trigger barcode counting for all FASTQ files
@@ -32,3 +33,11 @@ $(DATA)/rLP6/rLP6_Endo2_lb_expression.txt: $(DATA)/rLP6/counts_rLP6_Endo2_LB_DNA
 	@ Rscript --vanilla ../barcode_counts_to_expression.R $(DATA)/rLP6 \
 	$(MAP_DATA)/endo_lb_bc_map.txt $(MAP_DATA)/endo_lb_controls_bc_map.txt \
 	 ../../ref/endo_lib_2016_controls_clean.txt $@
+
+
+$(DATA)/fLP3/fLP3_Endo2_lb_expression_formatted.txt: $(DATA)/fLP3/fLP3_Endo2_lb_expression.txt
+	@ Rscript --vanilla endo_tss_format.R $< $@
+
+
+$(DATA)/rLP6/rLP6_Endo2_lb_expression_formatted.txt: $(DATA)/rLP6/rLP6_Endo2_lb_expression.txt
+	@ Rscript --vanilla endo_tss_format.R $< $@

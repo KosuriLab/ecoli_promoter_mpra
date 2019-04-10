@@ -16,6 +16,8 @@ map_controls: $(DATA)/endo_lb_controls_bc_map.txt
 
 barcode_counts: $(DATA)/counts_rLP5_Endo2_DNA1.txt
 
+format: $(DATA)/rLP5_Endo2_lb_expression_formatted.txt
+
 # active_tss_lib: $(LIB)/$(DATE)_active_tss_scrambled10_stride5.txt
 
 # mapping
@@ -68,6 +70,9 @@ $(DATA)/rLP5_Endo2_lb_expression.txt: $(DATA)/endo_lb_bc_map.txt $(DATA)/endo_lb
 	@ Rscript --vanilla ../barcode_counts_to_expression.R $(DATA) $^ ../../ref/endo_lib_2016_controls_clean.txt $@
 
 
+# format library
+$(DATA)/rLP5_Endo2_lb_expression_formatted.txt: $(DATA)/rLP5_Endo2_lb_expression.txt
+	@ Rscript --vanilla endo_tss_format.R $< $@
 
 # ### Generate library ###
 
