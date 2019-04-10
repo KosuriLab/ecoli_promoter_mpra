@@ -54,7 +54,7 @@ $(DATA)/lb/rLP5_frag_DNA1_1.txt: $(RAW_DATA)/DNA_RNA/lb/rLP5_frag_DNA1_1_S1_R1_0
 
 $(DATA)/lb/U00096.2_frag-rLP5_LB_expression.txt: $(DATA)/frag_stats.txt
 	@ echo "Barcode counts to expression..."
-	@ Rscript BC_counts2FragExpression.R
+	@ Rscript --vanilla ../barcode_counts_to_expression.txt 
 
 
 # fragment expression pileup - get expression of each fragment at every position, this will create both strands
