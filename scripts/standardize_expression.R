@@ -84,9 +84,9 @@ write.table(tss, file = '../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_
             row.names = F, quote = F, sep = '\t')
 write.table(scramble, file = '../processed_data/endo_scramble/endo_scramble_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
-write.table(scramble, file = '../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
+write.table(peak_tile, file = '../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
-write.table(scramble, file = '../processed_data/endo_tss/alt_landing_pads/fLP3/fLP3_Endo2_lb_expression_formatted_std.txt',
+write.table(flp3, file = '../processed_data/endo_tss/alt_landing_pads/fLP3/fLP3_Endo2_lb_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
-write.table(scramble, file = '../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_Endo2_lb_expression_formatted_std.txt',
+write.table(rlp6, file = '../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_Endo2_lb_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
