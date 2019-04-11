@@ -3,7 +3,7 @@ RAW_DATA=../../raw_data/endo_scramble
 DATA=../../processed_data/endo_scramble
 
 
-all: merge map map_controls
+all: map map_controls format
 
 merge: $(MERGE_DEST)/endo_scramble_combined_merged.fastq
 
@@ -15,6 +15,8 @@ map_controls: $(DATA)/endo_scramble_combined_controls_bc_map.txt
 barcode_count: $(DATA)/counts_rLP5_EndoScramble_LB_DNA1_1_S13_R1_001.txt 
 
 expression: $(DATA)/endo_scramble_expression.txt
+
+format: $(DATA)/endo_scramble_expression_formatted.txt
 
 
 # Data from two separate mapping runs 
@@ -58,3 +60,6 @@ $(DATA)/counts_rLP5_EndoScramble_LB_DNA1_1_S13_R1_001.txt: $(RAW_DATA)/DNA_RNA/r
 $(DATA)/endo_scramble_expression.txt: $(DATA)/endo_scramble_combined_bc_map.txt \
 	$(DATA)/endo_scramble_combined_controls_bc_map.txt
 	@ Rscript --vanilla ../barcode_counts_to_expression.R $(DATA) $^ ../../ref/20180507_active_tss_scrambled10_stride5.txt $@
+
+$(DATA)/endo_scramble_expression_formatted.txt: $(DATA)/endo_scramble_expression.txt
+	@ Rscript --vanilla endo_scramble_format.R $< $@

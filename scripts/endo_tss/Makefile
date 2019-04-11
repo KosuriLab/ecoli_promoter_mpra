@@ -4,7 +4,7 @@ DATA=../../processed_data/endo_tss/lb
 LIB=../../processed_data/lib_gen
 DATE=$(shell date +%Y%m%d)
 
-all: map expression
+all: map map_controls format
 	
 expression: $(DATA)/rLP5_Endo2_lb_expression.txt
 
