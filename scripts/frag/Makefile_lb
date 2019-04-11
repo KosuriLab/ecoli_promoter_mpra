@@ -3,7 +3,7 @@ RAW_DATA=../../raw_data/frag
 # LIB=../../processed_data/lib_gen
 # DATE=$(shell date +%Y%m%d)
 
-all: pileup call_peaks
+all: pileup peaks
 
 map: $(DATA)/frag_stats.txt
 
@@ -11,7 +11,7 @@ barcode_count: $(DATA)/lb/rLP5_frag_DNA1_1.txt
 
 pileup: $(DATA)/lb/plus_frag_pileup.wig
 
-call_peaks: $(DATA)/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
+peaks: $(DATA)/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
 
 # peak_tile_lib: $(LIB)/$(DATE)_lb_peak_tile_lib.txt
 
@@ -55,7 +55,7 @@ $(DATA)/lb/rLP5_frag_DNA1_1.txt: $(RAW_DATA)/DNA_RNA/lb/rLP5_frag_DNA1_1_S1_R1_0
 $(DATA)/lb/U00096.2_frag-rLP5_LB_expression.txt: $(DATA)/frag_stats.txt
 	@ echo "Barcode counts to expression..."
 	@ Rscript --vanilla barcode_counts_to_expression_frag.R $(DATA)/lb $(DATA)/barcode_maps.txt $< $@
-	
+
 
 # fragment expression pileup - get expression of each fragment at every position, this will create both strands
 $(DATA)/lb/plus_frag_pileup.wig: $(DATA)/lb/U00096.2_frag-rLP5_LB_expression.txt

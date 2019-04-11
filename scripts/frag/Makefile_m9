@@ -3,11 +3,11 @@ RAW_DATA=../../raw_data/frag
 # LIB=../../processed_data/lib_gen
 # DATE=$(shell date +%Y%m%d)
 
-all: pileup call_peaks
+all: pileup peaks
 
 pileup: $(DATA)/m9/plus_frag_pileup_M9.wig
 
-call_peaks: $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
+peaks: $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
 
 map: $(DATA)/frag_stats.txt
 

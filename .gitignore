@@ -15,6 +15,7 @@ processed_data/peak_tile/merged_reads/pPeakTiling_83_combined.paired.assembled.f
 processed_data/peak_tile/bc_map_consensus_bad_bcs.txt
 processed_data/frag/5prime.txt
 processed_data/frag/sam_stats.txt
+processed_data/frag/lb/U00096.2_frag-rLP5_LB_expression.txt
 processed_data/frag/3prime.txt
 processed_data/frag/pFrag_80.txt
 processed_data/frag/barcode_maps.txt
