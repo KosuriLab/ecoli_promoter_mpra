@@ -20,6 +20,12 @@ scramble <- read.table('../processed_data/endo_scramble/endo_scramble_expression
 peak_tile <- read.table('../processed_data/peak_tile/peak_tile_expression_formatted.txt',
                         header = T)
 
+flp3 <- read.table('../processed_data/endo_tss/alt_landing_pads/fLP3/fLP3_Endo2_lb_expression_formatted.txt',
+                   header = T)
+
+rlp6 <- read.table('../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_Endo2_lb_expression_formatted.txt',
+                   header = T)
+
 wt_scramble <- scramble %>% 
     filter(category == 'unscrambled') %>% 
     left_join(select(tss, tss_name, RNA_exp_sum_ave, expn_med), by = 'tss_name',
@@ -32,6 +38,10 @@ scramble$expn_med_fitted <- predict(wt_robust_fit,
                                     select(scramble, expn_med_scramble = expn_med))
 peak_tile$expn_med_fitted <- predict(wt_robust_fit,
                                      select(peak_tile, expn_med_scramble = expn_med))
+flp3$expn_med_fitted <- predict(wt_robust_fit,
+                                     select(flp3, expn_med_scramble = expn_med))
+rlp6$expn_med_fitted <- predict(wt_robust_fit,
+                                     select(rlp6, expn_med_scramble = expn_med))
 
 # we do not need to scale TSS because it's the standard, but create a "fitted"
 # column for consistency
@@ -43,12 +53,15 @@ set_std_threshold <- function(df) {
     neg_median <- median(neg$expn_med_fitted)
     threshold <- neg_median + (2 * neg_sd)
     scale = 1 / threshold
+    print(c(threshold, scale))
     return(df$expn_med_fitted * scale)
 }
 
 tss$expn_med_fitted_scaled <- set_std_threshold(tss)
 scramble$expn_med_fitted_scaled <- set_std_threshold(scramble)
 peak_tile$expn_med_fitted_scaled <- set_std_threshold(peak_tile)
+flp3$expn_med_fitted_scaled <- set_std_threshold(flp3)
+rlp6$expn_med_fitted_scaled <- set_std_threshold(rlp6)
 
 # now that expression is standardized, calculate change in expression for scramble
 # calculate change in expression: unscramble - scramble
@@ -65,4 +78,7 @@ write.table(scramble, file = '../processed_data/endo_scramble/endo_scramble_expr
             row.names = F, quote = F, sep = '\t')
 write.table(scramble, file = '../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
-
+write.table(scramble, file = '../processed_data/endo_tss/alt_landing_pads/fLP3/fLP3_Endo2_lb_expression_formatted_std.txt',
+            row.names = F, quote = F, sep = '\t')
+write.table(scramble, file = '../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_Endo2_lb_expression_formatted_std.txt',
+            row.names = F, quote = F, sep = '\t')
