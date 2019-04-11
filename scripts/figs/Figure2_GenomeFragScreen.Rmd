@@ -25,7 +25,7 @@ do.call(cbind, lapply(x, is.nan))
 
 positions <- seq(10, 1150, 10) - 620 
 
-plus_tss <- read.table("../../processed_data/frag_peak_calling/lb/plus_tss_counts.txt", 
+plus_tss <- read.table("../../processed_data/frag/lb/plus_tss_counts.txt", 
                        skip = 3, fill = TRUE, sep = '\t', header = F)
 plus_tss[is.nan(plus_tss)] <- 0
 names(plus_tss) <- positions
@@ -34,7 +34,7 @@ plus_tss_active <-plus_tss[c(1:1009), ]
 plus_tss_inactive <-plus_tss[c(1010:8231), ]
 plus_tss_negative <- plus_tss[c(8232:8705), ]
 
-minus_tss <- read.table("../../processed_data/frag_peak_calling/lb/minus_tss_counts.txt", 
+minus_tss <- read.table("../../processed_data/frag/lb/minus_tss_counts.txt", 
                         skip =3, sep = '\t', header = F)
 minus_tss[is.nan(minus_tss)] <- 0
 
@@ -89,17 +89,17 @@ rbind(tss_active, tss_inactive, tss_negative) %>% #need to down-sample otherwise
 2D - Overlap between M9 and LB promoters
 ```{bash}
 # identify peaks that are unique to each condition
-bedtools intersect -v -s -a ../../processed_data/frag_peak_calling/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/frag_peak_calling/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed > ../../processed_data/frag_peak_calling/lb/Unshared_LB_peaks.bed
+bedtools intersect -v -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed > ../../processed_data/frag/lb/Unshared_LB_peaks.bed
 
-bedtools intersect -v -s -a ../../processed_data/frag_peak_calling/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/frag_peak_calling/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed > ../../processed_data/frag_peak_calling/m9//Unshared_M9_peaks.bed
+bedtools intersect -v -s -a ../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed > ../../processed_data/frag/m9//Unshared_M9_peaks.bed
 ```
 
 ```{r}
-M9_num <- read.table("../../processed_data/frag_peak_calling/m9/Unshared_M9_peaks.bed") %>% nrow()
+M9_num <- read.table("../../processed_data/frag/m9/Unshared_M9_peaks.bed") %>% nrow()
 
-LB_num <- read.table("../../processed_data/frag_peak_calling/lb/Unshared_LB_peaks.bed") %>% nrow()
+LB_num <- read.table("../../processed_data/frag/lb/Unshared_LB_peaks.bed") %>% nrow()
 
-M9_total <- read.table("../../processed_data/frag_peak_calling/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed") %>% nrow()
+M9_total <- read.table("../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed") %>% nrow()
 
 shared <- M9_total - M9_num
 
@@ -118,11 +118,11 @@ gene_coords <- read.table("../../ref/U00096.2_genes_clean.bed", header = F) %>%
   as.data.frame()
 
 # Promoter peak with position of
-promoter_max_LB <- read.table("../../processed_data/frag_peak_calling/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed", header = F) %>%
+promoter_max_LB <- read.table("../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed", header = F) %>%
     select(peak_name = V4, peak_max = V8, peak_score = V7, peak_strand =  V6) %>%
     mutate(downstream = ifelse(peak_strand == '+', peak_max + 500, peak_max-500), Condition = "LB") 
 
-promoter_max_M9 <- read.table("../../processed_data/frag_peak_calling/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed", header = F) %>%
+promoter_max_M9 <- read.table("../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed", header = F) %>%
     select(peak_name = V4, peak_max = V8, peak_score = V7, peak_strand =  V6) %>%
     mutate(downstream = ifelse(peak_strand == '+', peak_max + 500, peak_max-500), Condition = "M9")
 
@@ -211,7 +211,7 @@ ggsave('../../figs/fig2/promoter_location_genome.pdf', units = 'in',
 ```{r}
 positions <- seq(10,1450,10)
 
-plus_RNA_exp <- read.table("../../processed_data/frag_peak_calling/plus_gene_RNA_matrix.txt", 
+plus_RNA_exp <- read.table("../../processed_data/frag/plus_gene_RNA_matrix.txt", 
                            skip = 3, fill = TRUE, sep = '\t', header = F) %>%
     select(V1:V145)
 plus_RNA_exp[is.nan(plus_RNA_exp)] <- 0
@@ -221,7 +221,7 @@ plus_sense_RNA <-plus_RNA_exp[c(1:721),]
 plus_dual_RNA <-plus_RNA_exp[c(722:861),]
 plus_anti_RNA <- plus_RNA_exp[c(862:1314),]
 
-minus_RNA_exp <- read.csv("../../processed_data/frag_peak_calling/minus_gene_RNA_matrix.txt", 
+minus_RNA_exp <- read.csv("../../processed_data/frag/minus_gene_RNA_matrix.txt", 
                           skip =3, sep = '\t', header = F) %>%
     select(V146:V290)
 minus_RNA_exp[is.nan(minus_RNA_exp)] <- 0
@@ -271,7 +271,7 @@ a <- rbind(RNA_mean_sense, RNA_mean_anti, RNA_mean_dual) %>%
 2F - cont. Get promoter score across gene body
 ```{r}
 positions <- seq(10,1450,10)
-plus_prom_exp <- read.table("../../processed_data/frag_peak_calling/plus_gene_promoter_matrix.txt", skip = 3, fill = TRUE, sep = '\t', header = F) %>%
+plus_prom_exp <- read.table("../../processed_data/frag/plus_gene_promoter_matrix.txt", skip = 3, fill = TRUE, sep = '\t', header = F) %>%
     select(V1:V145) 
 names(plus_prom_exp) <- positions
 
@@ -279,7 +279,7 @@ plus_sense_prom <-plus_prom_exp[c(1:721),]
 plus_dual_prom <-plus_prom_exp[c(722:861),]
 plus_anti_prom <- plus_prom_exp[c(862:1314),]
 
-minus_prom_exp <- read.csv("../../processed_data/frag_peak_calling/minus_gene_promoter_matrix.txt", skip =3, sep = '\t', header = F) %>%
+minus_prom_exp <- read.csv("../../processed_data/frag/minus_gene_promoter_matrix.txt", skip =3, sep = '\t', header = F) %>%
     select(V146:V290) 
 names(minus_prom_exp) <- positions
 minus_sense_prom <-minus_prom_exp[c(1:703),]
