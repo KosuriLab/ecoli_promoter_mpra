@@ -3,7 +3,7 @@ RAW_DATA=../../raw_data/peak_tile
 DATA=../../processed_data/peak_tile
 
 
-all: merge map map_controls
+all: map map_controls format
 
 merge: $(MERGE_DEST)/peak_tile_combined_merged.fastq
 
@@ -14,6 +14,8 @@ map_controls: $(DATA)/peak_tile_combined_controls_bc_map.txt
 barcode_counts: $(DATA)/counts_rLP5_PeakTiling_LB_DNA1_1_S5_R1_001.txt
 
 expression: $(DATA)/peak_tile_expression.txt
+
+format: $(DATA)/peak_tile_expression_formatted.txt
 
 # map combined reads
 $(MERGE_DEST)/pPeakTiling_82_combined.paired.assembled.fastq: $(RAW_DATA)/bc_map/pPeakTiling_82_combined_R1.fastq.gz \
@@ -49,5 +51,9 @@ $(DATA)/counts_rLP5_PeakTiling_LB_DNA1_1_S5_R1_001.txt: $(RAW_DATA)/DNA_RNA/rLP5
 
 $(DATA)/peak_tile_expression.txt: $(DATA)/peak_tile_combined_bc_map.txt $(DATA)/peak_tile_combined_controls_bc_map.txt
 	@ Rscript --vanilla ../barcode_counts_to_expression.R $(DATA) $^ ../../ref/20180508_lb_peak_tile_lib.txt $@
+
+
+$(DATA)/peak_tile_expression_formatted.txt: $(DATA)/peak_tile_expression.txt
+	@ Rscript --vanilla peak_tile_format.R $< $@
 
 
