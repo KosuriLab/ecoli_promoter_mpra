@@ -72,6 +72,14 @@ scramble <- scramble %>%
                                     NA),
            relative_exp = RNA_exp_sum_ave / unscrambled_exp)
 
+# create active and inactive columns for TSS and alternate landing pads
+tss <- tss %>% 
+    mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
+flp3 <- flp3 %>% 
+    mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
+rlp6 <- rlp6 %>% 
+    mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
+
 write.table(tss, file = '../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
 write.table(scramble, file = '../processed_data/endo_scramble/endo_scramble_expression_formatted_std.txt',
