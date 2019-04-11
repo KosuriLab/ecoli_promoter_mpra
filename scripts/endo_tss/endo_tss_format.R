@@ -7,8 +7,14 @@ options(stringsAsFactors = F)
 # 
 # infile <- args[1]
 # outfile <- args[2]
-infile <- '../../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression.txt'
-outfile <- '../../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted.txt'
+# infile <- '../../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression.txt'
+# outfile <- '../../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted.txt'
+
+# infile <- '../../processed_data/endo_tss/alt_landing_pads/fLP3/fLP3_Endo2_lb_expression.txt'
+# outfile <- '../../processed_data/endo_tss/alt_landing_pads/fLP3/fLP3_Endo2_lb_expression_formatted.txt'
+
+infile <- '../../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_Endo2_lb_expression.txt'
+outfile <- '../../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_Endo2_lb_expression_formatted.txt'
 
 
 data <- read.table(file = infile, header = T)
