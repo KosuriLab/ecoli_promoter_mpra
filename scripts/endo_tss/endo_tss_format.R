@@ -33,4 +33,15 @@ data$category <- "tss"
 data$category[grep("pos_control", data$name)] <- "pos_control"
 data$category[grep("neg_control", data$name)] <- "neg_control"
 
+# separately format negative controls
+neg <- filter(data, category == 'neg_control') %>% 
+    mutate(strand = '+') %>% 
+    separate(name, into = c('dummy1', 'dummy2', 'loc'), sep = '_', remove = F) %>% 
+    select(-dummy1, -dummy2) %>% 
+    separate(loc, into = c('start', 'end'), sep = ':', convert = T)
+
+data <- filter(data, category != 'neg_control') %>% 
+    bind_rows(select(neg, name, tss_name:strand, start, end, variant:category))
+
+
 write.table(data, file = outfile, quote = F, row.names = F)
