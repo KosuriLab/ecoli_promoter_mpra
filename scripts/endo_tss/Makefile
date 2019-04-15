@@ -4,7 +4,7 @@ DATA=../../processed_data/endo_tss/lb
 LIB=../../processed_data/lib_gen
 DATE=$(shell date +%Y%m%d)
 
-all: map map_controls format
+all: map map_controls format standardize bed
 	
 expression: $(DATA)/rLP5_Endo2_lb_expression.txt
 
@@ -18,7 +18,9 @@ barcode_counts: $(DATA)/counts_rLP5_Endo2_DNA1.txt
 
 format: $(DATA)/rLP5_Endo2_lb_expression_formatted.txt
 
-# active_tss_lib: $(LIB)/$(DATE)_active_tss_scrambled10_stride5.txt
+standardize: $(DATA)/rLP5_Endo2_lb_expression_formatted_std.txt
+
+bed: $(DATA)/lb/negative_TSS_plus.bed
 
 # mapping
 $(MERGE_DEST)/pEndo2_84.paired.assembled.fastq: $(RAW_DATA)/bc_map/pEndo2_84_R1.fastq.gz \
@@ -74,19 +76,15 @@ $(DATA)/rLP5_Endo2_lb_expression.txt: $(DATA)/endo_lb_bc_map.txt $(DATA)/endo_lb
 $(DATA)/rLP5_Endo2_lb_expression_formatted.txt: $(DATA)/rLP5_Endo2_lb_expression.txt
 	@ Rscript --vanilla endo_tss_format.R $< $@
 
-# ### Generate library ###
 
-# # threshold active TSS
-# $(DATA)/tss_positives.bed: $(DATA)/rLP5_Endo2_lb_expression.txt
-# 	@ Rscript threshold_tss.R
+# standardize, all other libraries must be formatted first
+$(DATA)/rLP5_Endo2_lb_expression_formatted_std.txt: $(DATA)/rLP5_Endo2_lb_expression_formatted.txt
+	@ echo "Standardizing expression files..."
+	@ cd ..
+	@ Rscript --vanilla standardize_expression.R
 
-# # convert bed to fasta	
-# $(DATA)/tss_positives.fasta: $(DATA)/tss_positives.bed
-# 	@ bedtools getfasta -fi ../../ref/U00096.2.fasta -bed $(DATA)/tss_positives.bed \
-# 	-fo $(DATA)/tss_positives.fasta -name -s
 
-# # generate active TSS scramble library
-# $(LIB)/$(DATE)_active_tss_scrambled10_stride5.txt: $(DATA)/tss_positives.fasta
-# 	@ echo "Generating scramble library..."
-# 	@ python scramble_tiling.py $< $(LIB)/neg_controls_no_primers.txt \
-# 	../../ref/synthetic_promoter_pos_controls.csv 10 5 $@
+# generate bed files for downstream analysis
+$(DATA)/lb/negative_TSS_plus.bed: $(DATA)/rLP5_Endo2_lb_expression_formatted_std.txt
+	@ echo "Creating bed files ..."
+	@ ./create_tss_bed.sh $<

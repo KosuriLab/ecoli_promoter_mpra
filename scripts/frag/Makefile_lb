@@ -1,5 +1,6 @@
 DATA=../../processed_data/frag
 RAW_DATA=../../raw_data/frag
+TSS_DATA=../../processed_data/endo_tss/lb
 # LIB=../../processed_data/lib_gen
 # DATE=$(shell date +%Y%m%d)
 
@@ -13,7 +14,11 @@ pileup: $(DATA)/lb/plus_frag_pileup.wig
 
 peaks: $(DATA)/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
 
-# peak_tile_lib: $(LIB)/$(DATE)_lb_peak_tile_lib.txt
+bigwig: $(DATA)/lb/plus_frag_pileup.bw $(DATA)/lb/minus_frag_pileup.bw
+
+matrix: $(DATA)/lb/matrix_plus $(DATA)/lb/matrix_minus
+
+heatmap: $(DATA)/lb/plus_tss_counts.txt $(DATA)/lb/minus_tss_counts.txt
 
 
 ### Fragment barcode mapping ###
@@ -88,11 +93,47 @@ $(DATA)/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta: \
 	@ bedtools getfasta -fi ../../ref/U00096.2.fasta -bed  $< -fo $@ -name -s
 
 
-# # peak tiling library
-# $(LIB)/$(DATE)_lb_peak_tile_lib.txt: $(DATA)/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta
-# 	@ echo "Generating peak tiling library..."
-# 	@ python peak_tiling.py $< $(LIB)/neg_controls_no_primers.txt \
-# 	../../ref/synthetic_promoter_pos_controls.csv 10 150 $@ $(LIB)/re_sites.fasta --n_random 1000 --rand_length 150
+# construct fragment pileup relative to TSS for Figure 2
+
+# requires bed files for active TSS, inactive TSS, negative TSS, strand-specific,
+# done in endo TSS makefile
+
+
+$(DATA)/lb/%_frag_pileup.bw: $(DATA)/lb/%_frag_pileup.wig
+	@ echo "Converting to bigwig..."
+	@ wigToBigWig $< ../../ref/U00096.2.chrom.sizes $@
+
+
+# create gene matrix for heatmap, plus strand
+$(DATA)/lb/matrix_plus: $(DATA)/lb/plus_frag_pileup.bw 
+	@ echo "Creating matrix, plus strand..."
+	@ computeMatrix scale-regions -S $< \
+	-R $(TSS_DATA)/active_TSS_plus.bed $(TSS_DATA)/inactive_TSS_plus.bed $(TSS_DATA)/negative_TSS_plus.bed \
+	-b 500 -m 150 -a 500 --binSize=10 -o $@
+
+
+$(DATA)/lb/matrix_minus: $(DATA)/lb/minus_frag_pileup.bw 
+	@ echo "Creating matrix, minus strand..."
+	@ computeMatrix scale-regions -S $< \
+	-R $(TSS_DATA)/active_TSS_minus.bed $(TSS_DATA)/inactive_TSS_minus.bed \
+	-b 500 -m 150 -a 500 --binSize=10 -o $@
+
+
+$(DATA)/lb/plus_tss_counts.txt: $(DATA)/lb/matrix_plus
+	@ echo "Creating heatmap, plus strand..."
+	@ plotHeatmap -m $< -out $(DATA)/lb/plus_tss_metagene \
+	--regionsLabel "Active TSSs" "Inactive TSSs" "Negative TSSs" \
+	--samplesLabel "Plus Promoter Expression" \
+	--outFileNameMatrix $(DATA)/lb/plus_tss_counts.txt
+
+
+$(DATA)/lb/minus_tss_counts.txt: $(DATA)/lb/matrix_minus
+	@ echo "Creating heatmap, minus strand..."
+	@ plotHeatmap -m $< -out $(DATA)/lb/minus_tss_metagene \
+	--regionsLabel "Active TSSs" "Inactive TSSs" \
+	--samplesLabel "Minus Promoter Expression" \
+	--outFileNameMatrix $(DATA)/lb/minus_tss_counts.txt
+
 
 
 print-%  : ; @echo $* = $($*)
