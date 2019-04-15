@@ -4,7 +4,7 @@ TSS_DATA=../../processed_data/endo_tss/lb
 # LIB=../../processed_data/lib_gen
 # DATE=$(shell date +%Y%m%d)
 
-all: pileup peaks
+all: pileup peaks heatmap
 
 map: $(DATA)/frag_stats.txt
 

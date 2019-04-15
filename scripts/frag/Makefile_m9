@@ -3,7 +3,7 @@ RAW_DATA=../../raw_data/frag
 # LIB=../../processed_data/lib_gen
 # DATE=$(shell date +%Y%m%d)
 
-all: pileup peaks
+all: pileup peaks heatmap
 
 pileup: $(DATA)/m9/plus_frag_pileup_M9.wig
 
@@ -14,6 +14,13 @@ map: $(DATA)/frag_stats.txt
 barcode_count: $(DATA)/m9/rLP5_frag_DNA1_1.txt
 
 expression: $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt
+
+bigwig: $(DATA)/m9/plus_frag_pileup.bw $(DATA)/lb/minus_frag_pileup.bw
+
+matrix: $(DATA)/m9/matrix_plus $(DATA)/m9/matrix_minus
+
+heatmap: $(DATA)/m9/plus_transcriptome_counts.txt $(DATA)/m9/minus_transcriptome_counts.txt
+
 
 
 ### Fragment barcode mapping ###
@@ -89,6 +96,59 @@ $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta:
 	$(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed
 	@ echo "Converting to FASTA..."
 	@ bedtools getfasta -fi ../../ref/U00096.2.fasta -bed  $< -fo $@ -name -s
+
+
+# create unique peaks
+# identify peaks that are unique to each condition
+$(DATA)/m9/Unshared_M9_peaks.bed: $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed
+	@ echo "Create unique peaks in LB and M9"
+	@ bedtools intersect -v -s -a $(DATA)/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed \
+	-b $< > $(DATA)/lb/Unshared_LB_peaks.bed
+	@ bedtools intersect -v -s -a $< -b $(DATA)/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed > $@
+
+
+# create bed files for gene matrix
+$(DATA)/m9/minus_antisense_reg_genes.bed: $(DATA)/m9/Unshared_M9_peaks.bed
+	@ echo "Creating bed files..."
+	@ Rscript --vanilla create_frag_reg_gene_bed.R
+
+
+$(DATA)/m9/%_frag_pileup.bw: $(DATA)/m9/%_frag_pileup_M9.wig
+	@ echo "Converting to bigwig..."
+	@ wigToBigWig $< ../../ref/U00096.2.chrom.sizes $@
+
+
+# create gene matrix for heatmap, plus strand
+$(DATA)/m9/matrix_plus: $(DATA)/m9/plus_frag_pileup.bw $(DATA)/m9/minus_antisense_reg_genes.bed
+	@ echo "Creating matrix, plus strand..."
+	@ computeMatrix scale-regions -S $< \
+	-R $(DATA)/m9/plus_sense_reg_genes.bed $(DATA)/m9/plus_antisense_reg_genes.bed \
+	$(DATA)/m9/plus_dual_reg_genes.bed \
+	-b 300 -m 850 -a 300 --binSize=10 -o $@
+
+
+$(DATA)/m9/matrix_minus: $(DATA)/m9/minus_frag_pileup.bw $(DATA)/m9/minus_antisense_reg_genes.bed
+	@ echo "Creating matrix, minus strand..."
+	@ computeMatrix scale-regions -S $< \
+	-R $(DATA)/m9/minus_sense_reg_genes.bed $(DATA)/m9/minus_antisense_reg_genes.bed \
+	$(DATA)/m9/minus_dual_reg_genes.bed \
+	-b 300 -m 850 -a 300 --binSize=10 -o $@
+
+
+$(DATA)/m9/plus_transcriptome_counts.txt: $(DATA)/m9/matrix_plus
+	@ echo "Creating heatmap, plus strand..."
+	@ plotHeatmap -m $< -out $(DATA)/m9/plus_gene_metagene \
+	--regionsLabel "Sense Regulated" "Antisense Regulated" "Dual Regulated" \
+	--samplesLabel "Plus Gene Expression" \
+	--outFileNameMatrix $(DATA)/m9/plus_transcriptome_counts.txt
+
+
+$(DATA)/m9/minus_transcriptome_counts.txt: $(DATA)/m9/matrix_minus
+	@ echo "Creating heatmap, minus strand..."
+	@ plotHeatmap -m $< -out $(DATA)/m9/minus_gene_metagene \
+	--regionsLabel "Sense Regulated" "Antisense Regulated" "Dual Regulated" \
+	--samplesLabel "Minus Gene Expression" \
+	--outFileNameMatrix $(DATA)/m9/minus_transcriptome_counts.txt
 
 
 #print-%  : ; @echo $* = $($*)
