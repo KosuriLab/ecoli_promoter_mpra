@@ -11,7 +11,7 @@ args = commandArgs(trailingOnly=TRUE)
 # args <- c('../../processed_data/frag/lb',
 #           '../../processed_data/frag/barcode_maps.txt',
 #           '../../processed_data/frag/frag_stats.txt',
-#           '../../processed_data/frag/U00096.2_frag-rLP5_LB_expression.txt')
+#           '../../processed_data/frag/lb/U00096.2_frag-rLP5_LB_expression.txt')
 
 
 count_folder <- args[1]
