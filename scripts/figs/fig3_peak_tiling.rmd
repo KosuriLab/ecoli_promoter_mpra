@@ -19,84 +19,60 @@ options(scipen = 10000)
 
 data_all <- read.table('../../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
                        header = T)
-```
 
-
-
-```{r}
-data_all  <- data_all  %>% 
-    mutate(name = gsub('_flipped', '', name),
-           name = gsub('_rc', '', name))
-
-
-data_all <- data_all %>% 
-    mutate(category = case_when(grepl('random', .$name) ~ 'random',
-                                grepl('neg', .$name) ~ 'negative',
-                                grepl('pos_control', .$name) ~ 'positive',
-                                TRUE ~ 'tile'))
-
-
-negatives <- data_all %>% filter(category == 'negative')
-neg_median <- median(negatives$expn_med_fitted_scaled, na.rm = T)
-neg_mad <- mad(negatives$expn_med_fitted_scaled, na.rm = T)
-threshold <- neg_median + 3*neg_mad
-
-data <- data_all %>% filter(category == 'tile')
+data <- filter(data_all, category == 'tile')
 peak_data <- data %>% 
     mutate(peak_length = peak_end - peak_start,
-            tile_start_relative = tile_start/peak_length) %>%
-    mutate(active = ifelse(expn_med_fitted_scaled >= threshold, 'Active', 'Inactive'))
+            tile_start_relative = tile_start/peak_length)
 
+neg <- filter(data, category == 'neg_control')
 ```
 
 ```{r}
-
-#Define negative threshold
-#neg <- subset(data_all, grepl("neg_control", data_all$name))
-#neg_median <- median(neg$expn_med_fitted_scaled, na.rm = TRUE)
-#neg_mad <- mad(neg$expn_med_fitted_scaled)
-#threshold = neg_median+(3*neg_mad)
-#threshold = .5
-#5% (4.9 actually) FDR if use .5
-
 cor <- cor(peak_data$RNA_exp_sum_1, peak_data$RNA_exp_sum_2)
 
 ggplot(peak_data, aes(RNA_exp_sum_1, RNA_exp_sum_2)) + 
-  geom_point() +
-  scale_x_log10() + scale_y_log10() + annotation_logticks(sides= 'bl') +
-  annotate("text", label=paste("italic(r)==",signif(cor, 3)),parse=TRUE, x=2.5, y=15, size = 8) +
-  xlab('Technical Replicate #1') + ylab('Technical Replicate #2') +
-  ggtitle('Correlation between replicate TSS measurements') +
-  geom_point(data=neg,aes(RNA_exp_1, RNA_exp_2), color = "firebrick1") +
-  annotate("text", label = "Negative Controls", x = 10, y = .5, color = 'firebrick1', size = 8) +
-  theme(axis.text.x = element_text(size=24), 
-        axis.text.y = element_text(size=24),
-        axis.title.x.bottom = element_text(size = 24),
-        axis.title.y.left = element_text(size = 24))
+    geom_point() +
+    scale_x_log10() + scale_y_log10() + annotation_logticks(sides= 'bl') +
+    annotate("text", label = paste("italic(r)==", signif(cor, 3)),
+             parse = TRUE, x = 1, y = 15, size = 8) +
+    xlab('Technical Replicate #1') + ylab('Technical Replicate #2') +
+    ggtitle('Correlation between replicate TSS measurements') +
+    geom_point(data = neg, aes(RNA_exp_sum_1, RNA_exp_sum_2), color = "firebrick1") +
+    annotate("text", label = "Negative Controls", x = 20, y = .5, 
+             color = 'firebrick1', size = 8) +
+    theme(axis.text.x = element_text(size = 24), 
+          axis.text.y = element_text(size = 24),
+          axis.title.x.bottom = element_text(size = 24),
+          axis.title.y.left = element_text(size = 24))
 
-
+ggsave('../../figs/fig3/peak_tile_correlation.pdf', units = 'in', 
+       height = 5, width = 7)
 ```
 
 Figure3B, MraZ Promoter
 
 ```{r cars}
-
+threshold <- 1
 peak_data %>% 
     filter(grepl('89077_89780', name)) %>% 
-    ggplot(aes(tile_start+peak_start, expn_med_fitted_scaled)) + geom_point(aes(color = active)) +
+    ggplot(aes(tile_start + peak_start, expn_med_fitted_scaled)) + 
+    geom_point(aes(color = active)) +
     geom_hline(yintercept = threshold, linetype = 'dashed') +
     geom_line(linetype = 'dashed') +
     scale_color_manual(values = c('red', 'black')) +
     labs(x = 'Tile Start Position', y = 'Expression', color = '', title = "mraZ Promoter") +
-    annotate("text", label = "Activity Threshold", x = 89125, y = threshold) +
+    # annotate("text", label = "Activity Threshold", x = 89125, y = threshold) +
     theme(axis.text = element_text(size = 20),
           axis.title = element_text(size = 20),
           title = element_text(size = 24),
           legend.text = element_text(size = 20))
     
 
-#ggsave("../../Figure3/3B_MraZPromoter.pdf")
+ggsave("../../figs/fig3/fig3b_MraZPromoter.pdf", units = 'in',
+       height = 5, width = 7)
 ```
+
 Subset active promoters and print for merging
 ```{r}
 peak_data %>% filter(expn_med_fitted_scaled > threshold) %>% nrow()  #10722 sequences with more active expression
