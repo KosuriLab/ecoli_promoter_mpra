@@ -3,7 +3,7 @@ RAW_DATA=../../raw_data/frag
 # LIB=../../processed_data/lib_gen
 # DATE=$(shell date +%Y%m%d)
 
-all: pileup peaks heatmap
+all: pileup peaks transcriptome_heatmap promoter_heatmap
 
 pileup: $(DATA)/m9/plus_frag_pileup_M9.wig
 
@@ -15,15 +15,21 @@ barcode_count: $(DATA)/m9/rLP5_frag_DNA1_1.txt
 
 expression: $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt
 
-bigwig: $(DATA)/m9/plus_frag_pileup.bw $(DATA)/lb/minus_frag_pileup.bw
+# bigwig: $(DATA)/m9/plus_frag_pileup.bw $(DATA)/lb/minus_frag_pileup.bw \
+# 	$(DATA)/m9/plus_totalRNA_B6_M9_2.bw $(DATA)/m9/minus_totalRNA_B6_M9_2.bw
 
-matrix: $(DATA)/m9/matrix_plus $(DATA)/m9/matrix_minus
+# matrix: $(DATA)/m9/matrix_plus_promoter $(DATA)/m9/matrix_minus_promoter \
+# 	$(DATA)/m9/matrix_plus_transcriptome $(DATA)/m9/matrix_minus_transcriptome
 
-heatmap: $(DATA)/m9/plus_transcriptome_counts.txt $(DATA)/m9/minus_transcriptome_counts.txt
+heatmap_transcriptome: $(DATA)/m9/plus_transcriptome_counts.txt $(DATA)/m9/minus_transcriptome_counts.txt
+
+heatmap_promoter: $(DATA)/m9/plus_promoter_counts.txt $(DATA)/m9/minus_promoter_counts.txt
 
 
+.IGNORE: $(DATA)/m9/plus_totalRNA_B6_M9_2.wig $(DATA)/m9/minus_totalRNA_B6_M9_2.wig
 
-### Fragment barcode mapping ###
+
+######################## Fragment barcode mapping #############################
 $(DATA)/pFrag_80.txt: $(RAW_DATA)/bc_map/pFrag-80_S1_L001_R2_001.fastq 
 	@ ./split_pe_reads.sh $(RAW_DATA)/bc_map/pFrag-80
 	@ mv pFrag-80.txt $(DATA)/pFrag_80.txt
@@ -54,7 +60,7 @@ $(DATA)/frag_stats.txt: $(DATA)/sam_stats.txt
 	@ rm FragmentBarcodes.txt 
 
 
-### DNA and RNA sequencing post-mapping ###	
+#################### post-integration DNA and RNA-seq #########################
 $(DATA)/m9/rLP5_frag_DNA1_1.txt: $(RAW_DATA)/DNA_RNA/m9/rLP5_Frag_M9_DNA1_1_S9_L002_R1_001.fastq.gz 
 	@ ../count_barcodes.sh $(RAW_DATA)/DNA_RNA/m9
 	@ mv counts* $(DATA)/m9
@@ -65,8 +71,9 @@ $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt: $(DATA)/frag_stats.txt
 	@ Rscript --vanilla barcode_counts_to_expression_frag.R $(DATA)/m9 $(DATA)/barcode_maps.txt $< $@
 
 
+######################## Fragment expression pileup #############################
 
-# fragment expression pileup - get expression of each fragment at every position, this will create both strands
+# get expression of each fragment at every position, this will create both strands
 $(DATA)/m9/plus_frag_pileup_M9.wig: $(DATA)/m9/U00096.2_frag-rLP5_M9_expression.txt
 	@ echo "Pileup..."
 	@ python frag_expression_pileup.py $< frag_pileup_M9.wig 50
@@ -98,8 +105,9 @@ $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.fasta:
 	@ bedtools getfasta -fi ../../ref/U00096.2.fasta -bed  $< -fo $@ -name -s
 
 
-# create unique peaks
-# identify peaks that are unique to each condition
+######################## Data for Figure 2F ############################### 
+
+##### identify peaks that are unique to each condition #####
 $(DATA)/m9/Unshared_M9_peaks.bed: $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed
 	@ echo "Create unique peaks in LB and M9"
 	@ bedtools intersect -v -s -a $(DATA)/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed \
@@ -107,48 +115,49 @@ $(DATA)/m9/Unshared_M9_peaks.bed: $(DATA)/m9/U00096.2_M9_plus_minus_called_peaks
 	@ bedtools intersect -v -s -a $< -b $(DATA)/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed > $@
 
 
-# create bed files for gene matrix
+##### create bed files for gene matrix #####
 $(DATA)/m9/minus_antisense_reg_genes.bed: $(DATA)/m9/Unshared_M9_peaks.bed
 	@ echo "Creating bed files..."
 	@ Rscript --vanilla create_frag_reg_gene_bed.R
 
 
+##### pattern rule for wig to bigwig conversion, frag #####
 $(DATA)/m9/%_frag_pileup.bw: $(DATA)/m9/%_frag_pileup_M9.wig
 	@ echo "Converting to bigwig..."
 	@ wigToBigWig $< ../../ref/U00096.2.chrom.sizes $@
 
 
-# create gene matrix for heatmap, plus strand
-$(DATA)/m9/matrix_plus: $(DATA)/m9/plus_frag_pileup.bw $(DATA)/m9/minus_antisense_reg_genes.bed
-	@ echo "Creating matrix, plus strand..."
+##### pattern rule for wig to bigwig conversion, transcriptome #####
+$(DATA)/m9/%_totalRNA_B6_M9_2.bw: $(DATA)/m9/%_totalRNA_B6_M9_2.wig
+	@ echo "Converting to bigwig..."
+	@ wigToBigWig $< ../../ref/U00096.2.chrom.sizes $@
+
+
+##### pattern rule for frag matrix #####
+$(DATA)/m9/matrix_%_transcriptome: $(DATA)/m9/%_frag_pileup.bw $(DATA)/m9/minus_antisense_reg_genes.bed
+	@ echo "Creating matrix..."
 	@ computeMatrix scale-regions -S $< \
-	-R $(DATA)/m9/plus_sense_reg_genes.bed $(DATA)/m9/plus_antisense_reg_genes.bed \
-	$(DATA)/m9/plus_dual_reg_genes.bed \
+	-R $(DATA)/m9/$*_sense_reg_genes.bed $(DATA)/m9/$*_antisense_reg_genes.bed \
+	$(DATA)/m9/$*_dual_reg_genes.bed \
 	-b 300 -m 850 -a 300 --binSize=10 -o $@
 
 
-$(DATA)/m9/matrix_minus: $(DATA)/m9/minus_frag_pileup.bw $(DATA)/m9/minus_antisense_reg_genes.bed
-	@ echo "Creating matrix, minus strand..."
+##### pattern rule for transcriptome matrix #####
+$(DATA)/m9/matrix_%_promoter: $(DATA)/m9/%_frag_pileup.bw $(DATA)/m9/minus_antisense_reg_genes.bed
+	@ echo "Creating matrix..."
 	@ computeMatrix scale-regions -S $< \
-	-R $(DATA)/m9/minus_sense_reg_genes.bed $(DATA)/m9/minus_antisense_reg_genes.bed \
-	$(DATA)/m9/minus_dual_reg_genes.bed \
+	-R $(DATA)/m9/$*_sense_reg_genes.bed $(DATA)/m9/$*_antisense_reg_genes.bed \
+	$(DATA)/m9/$*_dual_reg_genes.bed \
 	-b 300 -m 850 -a 300 --binSize=10 -o $@
 
 
-$(DATA)/m9/plus_transcriptome_counts.txt: $(DATA)/m9/matrix_plus
-	@ echo "Creating heatmap, plus strand..."
-	@ plotHeatmap -m $< -out $(DATA)/m9/plus_gene_metagene \
+##### pattern rule to make [plus/minus]_[promoter/transcriptome]_counts.txt ####
+$(DATA)/m9/%_counts.txt: $(DATA)/m9/matrix_%
+	@ echo "Creating heatmap..."
+	@ plotHeatmap -m $< -out $(DATA)/m9/$*_metagene \
 	--regionsLabel "Sense Regulated" "Antisense Regulated" "Dual Regulated" \
-	--samplesLabel "Plus Gene Expression" \
-	--outFileNameMatrix $(DATA)/m9/plus_transcriptome_counts.txt
-
-
-$(DATA)/m9/minus_transcriptome_counts.txt: $(DATA)/m9/matrix_minus
-	@ echo "Creating heatmap, minus strand..."
-	@ plotHeatmap -m $< -out $(DATA)/m9/minus_gene_metagene \
-	--regionsLabel "Sense Regulated" "Antisense Regulated" "Dual Regulated" \
-	--samplesLabel "Minus Gene Expression" \
-	--outFileNameMatrix $(DATA)/m9/minus_transcriptome_counts.txt
+	--samplesLabel "$* Gene Expression" \
+	--outFileNameMatrix $(DATA)/m9/$*_counts.txt
 
 
 #print-%  : ; @echo $* = $($*)
