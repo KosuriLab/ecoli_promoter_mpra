@@ -1,0 +1,329 @@
+---
+title: "Figure3_PeakTiling"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library("ggplot2")
+library("dplyr")
+library("tidyr")
+require("cowplot")
+library("Biostrings")
+library(reshape2)
+library(scales)
+
+options(stringsAsFactors = F)
+options(scipen = 10000)
+
+data_all <- read.table('../../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
+                       header = T)
+```
+
+
+
+```{r}
+data_all  <- data_all  %>% 
+    mutate(name = gsub('_flipped', '', name),
+           name = gsub('_rc', '', name))
+
+
+data_all <- data_all %>% 
+    mutate(category = case_when(grepl('random', .$name) ~ 'random',
+                                grepl('neg', .$name) ~ 'negative',
+                                grepl('pos_control', .$name) ~ 'positive',
+                                TRUE ~ 'tile'))
+
+
+negatives <- data_all %>% filter(category == 'negative')
+neg_median <- median(negatives$expn_med_fitted_scaled, na.rm = T)
+neg_mad <- mad(negatives$expn_med_fitted_scaled, na.rm = T)
+threshold <- neg_median + 3*neg_mad
+
+data <- data_all %>% filter(category == 'tile')
+peak_data <- data %>% 
+    mutate(peak_length = peak_end - peak_start,
+            tile_start_relative = tile_start/peak_length) %>%
+    mutate(active = ifelse(expn_med_fitted_scaled >= threshold, 'Active', 'Inactive'))
+
+```
+
+```{r}
+
+#Define negative threshold
+#neg <- subset(data_all, grepl("neg_control", data_all$name))
+#neg_median <- median(neg$expn_med_fitted_scaled, na.rm = TRUE)
+#neg_mad <- mad(neg$expn_med_fitted_scaled)
+#threshold = neg_median+(3*neg_mad)
+#threshold = .5
+#5% (4.9 actually) FDR if use .5
+
+cor <- cor(peak_data$RNA_exp_sum_1, peak_data$RNA_exp_sum_2)
+
+ggplot(peak_data, aes(RNA_exp_sum_1, RNA_exp_sum_2)) + 
+  geom_point() +
+  scale_x_log10() + scale_y_log10() + annotation_logticks(sides= 'bl') +
+  annotate("text", label=paste("italic(r)==",signif(cor, 3)),parse=TRUE, x=2.5, y=15, size = 8) +
+  xlab('Technical Replicate #1') + ylab('Technical Replicate #2') +
+  ggtitle('Correlation between replicate TSS measurements') +
+  geom_point(data=neg,aes(RNA_exp_1, RNA_exp_2), color = "firebrick1") +
+  annotate("text", label = "Negative Controls", x = 10, y = .5, color = 'firebrick1', size = 8) +
+  theme(axis.text.x = element_text(size=24), 
+        axis.text.y = element_text(size=24),
+        axis.title.x.bottom = element_text(size = 24),
+        axis.title.y.left = element_text(size = 24))
+
+
+```
+
+Figure3B, MraZ Promoter
+
+```{r cars}
+
+peak_data %>% 
+    filter(grepl('89077_89780', name)) %>% 
+    ggplot(aes(tile_start+peak_start, expn_med_fitted_scaled)) + geom_point(aes(color = active)) +
+    geom_hline(yintercept = threshold, linetype = 'dashed') +
+    geom_line(linetype = 'dashed') +
+    scale_color_manual(values = c('red', 'black')) +
+    labs(x = 'Tile Start Position', y = 'Expression', color = '', title = "mraZ Promoter") +
+    annotate("text", label = "Activity Threshold", x = 89125, y = threshold) +
+    theme(axis.text = element_text(size = 20),
+          axis.title = element_text(size = 20),
+          title = element_text(size = 24),
+          legend.text = element_text(size = 20))
+    
+
+#ggsave("../../Figure3/3B_MraZPromoter.pdf")
+```
+Subset active promoters and print for merging
+```{r}
+peak_data %>% filter(expn_med_fitted_scaled > threshold) %>% nrow()  #10722 sequences with more active expression
+
+peak_data %>% filter(expn_med_fitted_scaled > threshold) %>%
+          mutate(genome = "U00096.2",
+                  left = as.integer(tile_start+peak_start),
+                  right = tile_end+peak_start) %>% arrange(left) %>%
+          select(genome, left, right, name, expn_med_fitted_scaled, strand) %>%
+        write.table(., "../processed_data/peak_tile/active_tiles.bed", row.names = F, quote = F, sep = '\t', col.names = FALSE)
+
+
+```
+
+
+Identify overlapping active regions
+```{bash}
+bedtools merge -i ../processed_data/peak_tile/active_tiles.bed -d -120 -s -c 5,6 -o median,distinct > ../processed_data/peak_tile/merged_active_tiles.bed
+```
+
+alter columns
+```{r}
+read.table("../processed_data/peak_tile/merged_active_tiles.bed") %>%
+    mutate(name = paste(V2, "_", V3, "_", V5, sep = "")) %>%
+    select(V1, V2, V3, name, V4, V5) %>%
+    write.table(., "../processed_data/peak_tile/merged_active_tiles.bed",
+                  col.names = FALSE,
+                  sep = '\t',
+                  row.names = F,
+                  quote = F)
+
+```
+
+```{bash}
+bedtools intersect -c -a ../processed_data/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../processed_data/peak_tile/merged_active_tiles.bed -s > ../processed_data/peak_tile/collapsed_per_peak.bed
+                                    
+```
+
+
+3C - number of promoters per peak
+```{r}
+collapsed_per_Peak <- read.table("../processed_data/peak_tile/collapsed_per_peak.bed")#, col.names = c("genome", 'left', 'right', 'name', 'score', 'strand'))
+
+ggplot(collapsed_per_Peak, aes(V9)) +
+    geom_bar(stat = "count", width = .8, fill = '#528ECB', color = 'black') +
+    geom_text(stat='count', aes(label=..count..), vjust=-.2, size = 10) +
+    scale_y_log10() + annotation_logticks(sides = 'l') + 
+    labs(x = 'Number of promoter regions per peak', y = "Count") + 
+    scale_x_continuous(breaks = pretty_breaks(n=7)) +
+     theme(axis.text = element_text(size = 20),
+          axis.title = element_text(size = 20),
+          legend.text = element_text(size = 20))
+
+#ggsave("../../Figure3/1C_PromotersPerPeak.pdf")
+
+```
+
+Look at frag coverage at subpromoter peaks
+```{r}
+collapsed_per_Peak %>% mutate(med_size = median(V3-V2)) %>% select(med_size) %>% distinct()
+#median peak size is 243.5
+
+for (i in c(0:7)){
+  tmp <- collapsed_per_Peak %>% filter(V9 == i) %>% select(V1:V6) %>% filter(V6 == '+')
+  write.table(tmp, paste("../processed_data/subpromoters_plus_", i, ".bed", sep = ''), row.names = F, quote = F, col.names = FALSE, sep = '\t')
+}
+
+for (i in c(0:7)){
+  tmp <- collapsed_per_Peak %>% filter(V9 == i) %>% select(V1:V6) %>% filter(V6 == '-')
+  write.table(tmp, paste("../processed_data/subpromoters_minus_", i, ".bed", sep = ''), row.names = F, quote = F, col.names = FALSE, sep = '\t')
+}
+
+```
+
+```{r}
+positions <- seq(10,650,10)-200
+
+#is.nan.data.frame <- function(x)
+#do.call(cbind, lapply(x, is.nan))
+
+plus_subpromoter <- read.table("../processed_data/plus_subpromoter_counts.txt", skip = 3, fill = TRUE, sep = '\t', header = F)
+plus_subpromoter[is.na(plus_subpromoter)] <- 0
+names(plus_subpromoter) <- positions
+
+plus_sub0 <-plus_subpromoter[c(1:964),]
+plus_sub1 <-plus_subpromoter[c(965:1534),]
+plus_sub2 <- plus_subpromoter[c(1535:1683),]
+plus_sub3 <- plus_subpromoter[c(1684:1709),]
+plus_sub4 <- plus_subpromoter[c(1710:1721),]
+
+
+minus_subpromoter <- read.table("../processed_data/minus_subpromoter_counts.txt", skip = 3, fill = TRUE, sep = '\t', header = F)
+minus_subpromoter[is.na(minus_subpromoter)] <- 0
+names(minus_subpromoter) <- positions
+
+minus_sub0 <-minus_subpromoter[c(1:956),]
+minus_sub1 <-minus_subpromoter[c(957:1547),]
+minus_sub2 <- minus_subpromoter[c(1548:1719),]
+minus_sub3 <- minus_subpromoter[c(1720:1747),]
+
+sub0 <- rbind(plus_sub0, minus_sub0) %>%
+  as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+                  rbind(positions, .) %>% t() %>%
+                      as.data.frame() %>%
+                  mutate(#variable = as.numeric(as.character(variable)),
+                                    type = '0 subpromoters')
+names(sub0) <- c('position', 'coverage', 'Type')
+
+
+sub1 <- rbind(plus_sub1, minus_sub1) %>%
+  as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+                 rbind(positions, .) %>% t() %>%
+                      as.data.frame() %>%
+                  mutate(#variable = as.numeric(as.character(variable)),
+                                    type = '1 subpromoters')
+names(sub1) <- c('position', 'coverage', 'Type')
+
+sub2 <- rbind(plus_sub2, minus_sub2) %>%
+  as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+                  rbind(positions, .) %>% t() %>%
+                      as.data.frame() %>%
+                  mutate(#variable = as.numeric(as.character(variable)),
+                                    type = '2 subpromoters')
+names(sub2) <- c('position', 'coverage', 'Type')
+
+sub3 <- rbind(plus_sub3, minus_sub3) %>%
+  as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+                  rbind(positions, .) %>% t() %>%
+                      as.data.frame() %>%
+                  mutate(#variable = as.numeric(as.character(variable)),
+                                    type = '3 subpromoters')
+names(sub3) <- c('position', 'coverage', 'Type')
+
+sub4 <- plus_sub4 %>%
+  as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+                  rbind(positions, .) %>% t() %>%
+                      as.data.frame() %>%
+                  mutate(#variable = as.numeric(as.character(variable)),
+                                    type = '4 subpromoters')
+names(sub4) <- c('position', 'coverage', 'Type')
+
+
+
+col <- wes_palette("Zissou1", 5, type = c('discrete'))
+
+ rbind(sub0, sub1, sub2, sub3, sub4) %>% ggplot(., aes(x=position, y=coverage)) +
+          geom_area(alpha = 0, size = 1.1, position = 'identity', aes(color = Type)) + 
+          #geom_point(aes(color = Type)) +
+          geom_vline(xintercept = c(0,250), linetype = 'dashed') +
+          scale_color_manual(breaks = c('0 subpromoters', '1 subpromoters', "2 subpromoters", "3 subpromoters", "4 subpromoters"), values = col) +
+          labs(x ='Position Relative to Peak',
+               y = 'Median Promoter Activity',
+               title = 'Promoter Activity Across Peaks \n by Subpromoter Counts') +
+            theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+                axis.title.x = element_text(size = 20),
+                axis.text.y = element_text(size = 20), 
+                axis.title.y = element_text(size = 20), 
+                legend.text=element_text(size=20))
+
+          
+```
+
+
+3D) Identify minimal promoter unit, 
+```{r}
+
+minimal_promoters <- read.table("../processed_data/peak_tile/merged_active_tiles.bed", header = F,
+                                col.names = c("genome", 'left', 'right', 'name', 'score', 'strand')) %>% 
+                                mutate(left_minimal = right - 150,
+                                right_minimal = left + 150,
+                                minimal_length = right_minimal - left_minimal) 
+
+#sizes of minimal promoters
+ggplot(filter(minimal_promoters, minimal_length > 0), aes(minimal_length)) + 
+      geom_histogram(color = 'black',
+                     binwidth = 10,
+                     fill = '#528ECB',
+                     color = 'black') +
+      scale_x_continuous(breaks = pretty_breaks(n=8)) + 
+      labs(x = 'Length of minimum promoter region',
+           y = 'Count',
+           title = 'Sizes of minimum promoter regions') +
+     theme(axis.text = element_text(size = 20),
+          axis.title = element_text(size = 20),
+          legend.text = element_text(size = 20))
+
+#ggsave("../../Figure3/3D_MinimalPromoterSize.pdf")
+                            
+```
+
+
+Get fasta sequence of merged active tiles
+```{bash}
+
+bedtools getfasta -fi ../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../processed_data/merged_active_tiles.bed -s -tab > ../processed_data/merged_active_tiles.fasta
+
+
+```
+
+
+
+How many tandem, divergent, and convergent promoters are there?
+```{r}
+
+minimal_downstream <- minimal_promoters %>% mutate(downstream = ifelse(strand == '+', right_minimal + 200, left_minimal-200),
+                                                   upstream = ifelse(strand == '+', left_minimal - 200, right_minimal+200)) 
+
+tandem_promoters <- sqldf("SELECT a.*, b.*
+                    FROM minimal_downstream AS a 
+                    LEFT JOIN minimal_downstream AS b
+                    ON b.left_minimal BETWEEN a.right_minimal AND a.downstream
+                    OR b.right_minimal BETWEEN a.right_minimal AND a.downstream
+                    OR b.left_minimal BETWEEN a.left_minimal AND a.downstream
+                    OR b.right_minimal BETWEEN a.left_minimal AND a.downstream") %>%
+                    filter(left_minimal != left_minimal..18) %>%
+                    na.omit() #%>%
+                    mutate(Orientation = ifelse(strand==peak_strand, "Sense", "Antisense"), type = 'Intragenic')
+
+
+
+overlapping_promoters
+
+divergent_promoters
+
+convergent_promoters
+
+```
+
+

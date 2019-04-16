@@ -79,6 +79,8 @@ flp3 <- flp3 %>%
     mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
 rlp6 <- rlp6 %>% 
     mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
+peak_tile <- peak_tile %>% 
+    mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'Active', 'Inactive'))
 
 write.table(tss, file = '../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
