@@ -105,18 +105,20 @@ print(paste(shared, "shared"))
 ```{r}
 # Gene coordinates
 gene_coords <- read.table("../../ref/U00096.2_genes_clean.bed", header = F) %>%
-  select(gene = V4, Leftbound = V2, Rightbound = V3, strand = V6) %>%
-  lapply(., gsub, pattern='NC_000913.2:', replacement='') %>%
-  as.data.frame()
+    select(gene = V4, Leftbound = V2, Rightbound = V3, strand = V6) %>%
+    lapply(., gsub, pattern='NC_000913.2:', replacement='') %>%
+    as.data.frame()
 
 # Promoter peak with position of
 promoter_max_LB <- read.table("../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed", header = F) %>%
     select(peak_name = V4, peak_max = V8, peak_score = V7, peak_strand =  V6) %>%
-    mutate(downstream = ifelse(peak_strand == '+', peak_max + 500, peak_max-500), Condition = "LB") 
+    mutate(downstream = ifelse(peak_strand == '+', peak_max + 500, peak_max-500), 
+           Condition = "LB") 
 
 promoter_max_M9 <- read.table("../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed", header = F) %>%
     select(peak_name = V4, peak_max = V8, peak_score = V7, peak_strand =  V6) %>%
-    mutate(downstream = ifelse(peak_strand == '+', peak_max + 500, peak_max-500), Condition = "M9")
+    mutate(downstream = ifelse(peak_strand == '+', peak_max + 500, peak_max-500), 
+           Condition = "M9")
 
 ```
 
@@ -126,9 +128,10 @@ promoter_max_M9 <- read.table("../../processed_data/frag/m9/U00096.2_M9_plus_min
 intragenic_overlap_LB <- sqldf("SELECT a.*, b.*
                     FROM promoter_max_LB AS a 
                     LEFT JOIN gene_coords AS b
-                    ON a.peak_max BETWEEN b.Leftbound AND b.Rightbound") %>% na.omit() %>%
-                    mutate(Orientation = ifelse(strand==peak_strand, "Sense", "Antisense"), 
-                           type = 'Intragenic')
+                    ON a.peak_max BETWEEN b.Leftbound AND b.Rightbound") %>% 
+    na.omit() %>%
+    mutate(Orientation = ifelse(strand==peak_strand, "Sense", "Antisense"), 
+           type = 'Intragenic')
 
 intergenic_promoters_LB <- anti_join(promoter_max_LB, intragenic_overlap_LB, by = 'peak_name')
 
@@ -140,11 +143,12 @@ intergenic_overlap_LB <- sqldf("SELECT a.*, b.*
                     OR b.Rightbound BETWEEN a.peak_max AND a.downstream
                     OR b.Leftbound BETWEEN a.downstream AND a.peak_max
                     OR b.Rightbound BETWEEN a.downstream AND a.peak_max") %>%
-                    na.omit() %>%
-                    group_by(peak_max) %>% 
-                    filter(if (peak_strand == '+') Leftbound == min(Leftbound) else Rightbound == max(Rightbound)) %>% 
-                    mutate(Orientation = ifelse(strand==peak_strand, "Sense", "Antisense"), 
-                           type =  'Intergenic') %>% ungroup()
+    na.omit() %>%
+    group_by(peak_max) %>% 
+    filter(if (peak_strand == '+') Leftbound == min(Leftbound) else Rightbound == max(Rightbound)) %>% 
+    mutate(Orientation = ifelse(strand==peak_strand, "Sense", "Antisense"), 
+           type =  'Intergenic') %>% 
+    ungroup()
 
 ```
 
@@ -155,8 +159,8 @@ intragenic_overlap_M9 <- sqldf("SELECT a.*, b.*
                     FROM promoter_max_M9 AS a 
                     LEFT JOIN gene_coords AS b
                     ON a.peak_max BETWEEN b.Leftbound AND b.Rightbound") %>% na.omit() %>%
-                    mutate(Orientation = ifelse(strand==peak_strand, "Sense", "Antisense"), 
-                           type = 'Intragenic')
+    mutate(Orientation = ifelse(strand==peak_strand, "Sense", "Antisense"), 
+           type = 'Intragenic')
 
 
 intergenic_promoters_M9 <- anti_join(promoter_max_M9, intragenic_overlap_M9, by = 'peak_name')
@@ -169,31 +173,32 @@ intergenic_overlap_M9 <- sqldf("SELECT a.*, b.*
                     OR b.Rightbound BETWEEN a.peak_max AND a.downstream
                     OR b.Leftbound BETWEEN a.downstream AND a.peak_max
                     OR b.Rightbound BETWEEN a.downstream AND a.peak_max") %>%
-                    na.omit() %>%
-                    group_by(peak_max) %>% 
-                    filter(if (peak_strand == '+') Leftbound == min(Leftbound) else Rightbound == max(Rightbound)) %>% 
-                    mutate(Orientation = ifelse(strand==peak_strand, "Sense", "Antisense"), 
-                           type =  'Intergenic') %>% ungroup()
+    na.omit() %>%
+    group_by(peak_max) %>% 
+    filter(if (peak_strand == '+') Leftbound == min(Leftbound) else Rightbound == max(Rightbound)) %>% 
+    mutate(Orientation = ifelse(strand == peak_strand, "Sense", "Antisense"), 
+           type =  'Intergenic') %>% 
+    ungroup()
 ```
 
 2E Figure
 ```{r}
 rbind(intergenic_overlap_M9, intragenic_overlap_M9, intergenic_overlap_LB, intragenic_overlap_LB) %>%
-          select(type, Orientation, Condition) %>% 
-          group_by(type, Orientation, Condition) %>% na.omit() %>%
-          mutate(count = n()) %>%  ungroup() %>% distinct() %>%
-           ggplot(aes(x=Condition, y=count, fill = Orientation)) + 
-          geom_bar(stat = 'identity', position = 'stack', color = 'black') +
-          scale_fill_manual(values = c("firebrick3", "#2E6EB7")) +
-          theme(axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
-                axis.title.x = element_text(size = 20),
-                axis.text.y = element_text(size = 20), 
-                axis.title.y = element_text(size = 20), 
-                legend.text = element_text(size = 20)) +
-          labs(x = "Promoter Type", y = "Count", 
-               color = "Orientation", 
-               title = "Promoter Classification") +
-          facet_wrap(~type)
+    select(type, Orientation, Condition) %>% 
+    group_by(type, Orientation, Condition) %>% na.omit() %>%
+    mutate(count = n()) %>%  ungroup() %>% distinct() %>%
+    ggplot(aes(x=Condition, y=count, fill = Orientation)) + 
+    geom_bar(stat = 'identity', position = 'stack', color = 'black') +
+    scale_fill_manual(values = c("firebrick3", "#2E6EB7")) +
+    theme(axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
+          axis.title.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20), 
+          legend.text = element_text(size = 20)) +
+    labs(x = "Promoter Type", y = "Count", 
+         color = "Orientation", 
+         title = "Promoter Classification") +
+    facet_wrap(~type)
 
 ggsave('../../figs/fig2/promoter_location_genome.pdf', units = 'in',
        height = 5, width = 7)
@@ -206,8 +211,10 @@ positions <- seq(10,1450,10)
 #is.nan.data.frame <- function(x)
 #do.call(cbind, lapply(x, is.nan))
 
-plus_RNA_exp <- read.table("../processed_data/plus_transcriptome_counts.txt", skip = 3, fill = TRUE, sep = '\t', header = F) %>%
+plus_RNA_exp <- read.table("../../processed_data/frag/m9/plus_transcriptome_counts.txt", 
+                           skip = 3, fill = TRUE, sep = '\t', header = F) %>%
     select(V1:V145)
+
 plus_RNA_exp[is.na(plus_RNA_exp)] <- 0
 names(plus_RNA_exp) <- positions
 
@@ -215,8 +222,10 @@ plus_sense_RNA <-plus_RNA_exp[c(1:593),]
 plus_anti_RNA <-plus_RNA_exp[c(594:849),]
 plus_dual_RNA <- plus_RNA_exp[c(850:967),]
 
-minus_RNA_exp <- read.csv("../processed_data/minus_transcriptome_counts.txt", skip =3, sep = '\t', header = F) %>%
+minus_RNA_exp <- read.csv("../../processed_data/frag/m9/minus_transcriptome_counts.txt", 
+                          skip =3, sep = '\t', header = F) %>%
     select(V1:145)
+
 minus_RNA_exp[is.na(minus_RNA_exp)] <- 0
 
 names(minus_RNA_exp) <- positions
@@ -225,47 +234,49 @@ minus_anti_RNA <-minus_RNA_exp[c(582:841),]
 minus_dual_RNA <- minus_RNA_exp[c(842:957),]
 
 RNA_mean_sense <- rbind(plus_sense_RNA, minus_sense_RNA) %>%
-                      as.matrix() %>% colMedians(na.rm = TRUE) %>%
-                      rbind(positions, .) %>% t() %>% as.data.frame() %>% mutate(type = 'Sense Regulated')
+    as.matrix() %>% colMedians(na.rm = TRUE) %>%
+    rbind(positions, .) %>% t() %>% as.data.frame() %>% 
+    mutate(type = 'Sense Regulated')
 names(RNA_mean_sense) <- c('position', 'coverage', 'Type')
 
 RNA_mean_anti <- rbind(plus_anti_RNA, minus_anti_RNA) %>%
-          as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-          rbind(positions, .) %>% t() %>%
-          as.data.frame() %>% mutate(type = 'Antisense Regulated')
+    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% t() %>% as.data.frame() %>% 
+    mutate(type = 'Antisense Regulated')
 names(RNA_mean_anti) <- c('position', 'coverage', 'Type')
 
 RNA_mean_dual <- rbind(plus_dual_RNA, minus_dual_RNA) %>%
-          as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-          rbind(positions, .) %>% t() %>%
-          as.data.frame() %>% mutate(type = 'Dual Regulated')
+    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% t() %>% as.data.frame() %>% 
+    mutate(type = 'Dual Regulated')
 names(RNA_mean_dual) <- c('position', 'coverage', 'Type')
 
 
-
-
-a <- rbind(RNA_mean_sense, RNA_mean_anti, RNA_mean_dual) %>% ggplot(., aes(x=position, y=coverage)) +
-          geom_area(alpha = 0, size = 1.1, position = 'identity', aes(color = Type)) + 
-          geom_vline(xintercept = c(300,1150), linetype = 'dashed') +
-          scale_color_manual(breaks = c('Sense Regulated', 'Antisense Regulated', "Dual Regulated"),
-                             values = c('firebrick3','purple', '#2E6EB7')) +
-          labs(x ='Position Relative to Gene',
-               y = 'Median RNAseq Coverage',
-               title = 'RNAseq Coverage Across \n Antisense Regulated Genes' ) +
-            theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank(),
-                axis.title.x = element_text(size = 20),
-                axis.text.y = element_text(size = 20), 
-                axis.title.y = element_text(size = 20), 
-                legend.text=element_text(size=20))
+a <- rbind(RNA_mean_sense, RNA_mean_anti, RNA_mean_dual) %>% 
+    ggplot(., aes(x = position, y = coverage)) +
+    geom_area(alpha = 0, size = 1.1, position = 'identity', aes(color = Type)) + 
+    geom_vline(xintercept = c(300,1150), linetype = 'dashed') +
+    scale_color_manual(breaks = c('Sense Regulated', 'Antisense Regulated', "Dual Regulated"),
+                       values = c('firebrick3','purple', '#2E6EB7')) +
+    labs(x ='Position Relative to Gene',
+         y = 'Median RNAseq Coverage',
+         title = 'RNAseq Coverage Across \n Antisense Regulated Genes' ) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20), 
+          legend.text = element_text(size = 20))
 ```
 
 
 2F - cont. Get promoter score across gene body
 ```{r}
 positions <- seq(10,1450,10)
-plus_prom_exp <- read.table("../processed_data/plus_promoter_M9_counts.txt", skip = 3, fill = TRUE, sep = '\t', header = F) %>%
+plus_prom_exp <- read.table("../../processed_data/frag/m9/plus_promoter_counts.txt", 
+                            skip = 3, fill = TRUE, sep = '\t', header = F) %>%
     select(V1:V145) 
+
 names(plus_prom_exp) <- positions
 
 plus_sense_prom <-plus_prom_exp[c(1:593),]
@@ -273,57 +284,58 @@ plus_anti_prom <-plus_prom_exp[c(594:849),]
 plus_dual_prom <- plus_prom_exp[c(850:967),]
 
 
-minus_prom_exp <- read.csv("../processed_data/minus_promoter_M9_counts.txt", skip =3, sep = '\t', header = F) %>%
-    select(V1:V145) 
+minus_prom_exp <- read.csv("../../processed_data/frag/m9/minus_promoter_counts.txt", 
+                           skip = 3, sep = '\t', header = F) %>% select(V1:V145) 
+
 names(minus_prom_exp) <- positions
 minus_sense_prom <-minus_prom_exp[c(1:581),]
 minus_anti_prom <-minus_prom_exp[c(582:841),]
 minus_dual_prom <- minus_prom_exp[c(842:957),]
 
 prom_mean_sense <- rbind(plus_sense_prom, minus_sense_prom) %>%
-                      as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-                      rbind(positions, .) %>% t() %>%
-                      as.data.frame() %>% mutate(type = 'Sense Regulated \n (N=1,424)')
+    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% t() %>%
+    as.data.frame() %>% 
+    mutate(type = 'Sense Regulated \n (N=1,424)')
 names(prom_mean_sense) <- c('position', 'coverage', 'Type')
 
 prom_mean_dual <- rbind(plus_dual_prom, minus_dual_prom) %>%
-                    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-                    rbind(positions, .) %>% t() %>%
-                    as.data.frame() %>% mutate(type = 'Dual Regulated \n (N=272)')
+    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% t() %>%
+    as.data.frame() %>% 
+    mutate(type = 'Dual Regulated \n (N=272)')
 names(prom_mean_dual) <- c('position', 'coverage', 'Type')
 
 prom_mean_anti <- rbind(plus_anti_prom, minus_anti_prom) %>%
-                      as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-                      rbind(positions, .) %>% t() %>%
-                      as.data.frame() %>% mutate(type = 'Antisense Regulated \n (N=905)')
+    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% t() %>%
+    as.data.frame() %>% 
+    mutate(type = 'Antisense Regulated \n (N=905)')
 names(prom_mean_anti) <- c('position', 'coverage', 'Type')
 
 
-b <- rbind(prom_mean_sense, prom_mean_anti, prom_mean_dual) %>% ggplot(., aes(x=position, y=coverage)) +
-          geom_area(alpha = 0, size = 1.1, position = 'identity', aes(color = Type)) + 
-          geom_vline(xintercept = c(300,1150), linetype = 'dashed') +
-         scale_color_manual(breaks = c('Sense Regulated \n (N=1,424)', 'Antisense Regulated \n (N=905)', "Dual Regulated \n (N=272)"),
-                             values = c('firebrick3','purple', '#2E6EB7')) +
-          labs(x ='Position Relative to Gene',
-               y = 'Median Promoter Activity',
-               title = 'Promoter Activity Across \n Antisense Regulated Genes' ) +
-          theme(axis.text.x=element_blank(),
-             axis.ticks.x=element_blank(),
-             axis.title.x = element_text(size = 20),
-                axis.text.y = element_text(size = 20), 
-                axis.title.y = element_text(size = 20), 
-                legend.text=element_text(size=20))
+b <- rbind(prom_mean_sense, prom_mean_anti, prom_mean_dual) %>% 
+    ggplot(., aes(x = position, y = coverage)) +
+    geom_area(alpha = 0, size = 1.1, position = 'identity', aes(color = Type)) + 
+    geom_vline(xintercept = c(300,1150), linetype = 'dashed') +
+    scale_color_manual(breaks = c('Sense Regulated \n (N=1,424)', 
+                                  'Antisense Regulated \n (N=905)', 
+                                  "Dual Regulated \n (N=272)"),
+                       values = c('firebrick3','purple', '#2E6EB7')) +
+    labs(x ='Position Relative to Gene',
+         y = 'Median Promoter Activity',
+         title = 'Promoter Activity Across \n Antisense Regulated Genes' ) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20), 
+          legend.text = element_text(size = 20))
 
-plot_grid(a,b, ncol =2)
+plot_grid(a, b, ncol = 2)
 
+ggsave('../../figs/fig2/metagene_activity.pdf', units = 'in',
+       height = 5, width = 13)
+```
 
-
-
-
-
-
-
-
-
-plot_grid(a,b, ncol =2)
 
