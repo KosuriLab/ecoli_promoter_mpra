@@ -20,12 +20,21 @@ options(scipen = 10000)
 data_all <- read.table('../../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
                        header = T)
 
-data <- filter(data_all, category == 'tile')
-peak_data <- data %>% 
-    mutate(peak_length = peak_end - peak_start,
-            tile_start_relative = tile_start/peak_length)
+negatives <- filter(data_all, category == 'neg_control')
+neg_median <- median(negatives$expn_med_fitted_scaled, na.rm = T)
+neg_sd <- sd(negatives$expn_med_fitted_scaled, na.rm = T)
+# threshold <- neg_median + 2*neg_sd
+neg_mad <- mad(negatives$expn_med_fitted_scaled, na.rm = T)
+# threshold <- neg_median * 2
+threshold <- neg_median + 3*neg_mad
 
-neg <- filter(data, category == 'neg_control')
+peak_data <- data_all %>% 
+    filter(category == 'tile') %>% 
+    mutate(peak_length = peak_end - peak_start,
+            tile_start_relative = tile_start/peak_length) %>% 
+    mutate(active = ifelse(expn_med_fitted_scaled >= threshold, 'Active', 'Inactive'))
+
+
 ```
 
 ```{r}
@@ -38,7 +47,7 @@ ggplot(peak_data, aes(RNA_exp_sum_1, RNA_exp_sum_2)) +
              parse = TRUE, x = 1, y = 15, size = 8) +
     xlab('Technical Replicate #1') + ylab('Technical Replicate #2') +
     ggtitle('Correlation between replicate TSS measurements') +
-    geom_point(data = neg, aes(RNA_exp_sum_1, RNA_exp_sum_2), color = "firebrick1") +
+    geom_point(data = negatives, aes(RNA_exp_sum_1, RNA_exp_sum_2), color = "firebrick1") +
     annotate("text", label = "Negative Controls", x = 20, y = .5, 
              color = 'firebrick1', size = 8) +
     theme(axis.text.x = element_text(size = 24), 
@@ -53,7 +62,7 @@ ggsave('../../figs/fig3/peak_tile_correlation.pdf', units = 'in',
 Figure3B, MraZ Promoter
 
 ```{r cars}
-threshold <- 1
+# threshold <- 1
 peak_data %>% 
     filter(grepl('89077_89780', name)) %>% 
     ggplot(aes(tile_start + peak_start, expn_med_fitted_scaled)) + 
@@ -78,45 +87,45 @@ Subset active promoters and print for merging
 peak_data %>% filter(expn_med_fitted_scaled > threshold) %>% nrow()  #10722 sequences with more active expression
 
 peak_data %>% filter(expn_med_fitted_scaled > threshold) %>%
-          mutate(genome = "U00096.2",
-                  left = as.integer(tile_start+peak_start),
-                  right = tile_end+peak_start) %>% arrange(left) %>%
-          select(genome, left, right, name, expn_med_fitted_scaled, strand) %>%
-        write.table(., "../processed_data/peak_tile/active_tiles.bed", row.names = F, quote = F, sep = '\t', col.names = FALSE)
-
-
+    mutate(genome = "U00096.2",
+           left = as.integer(tile_start+peak_start),
+           right = tile_end+peak_start) %>% arrange(left) %>%
+    select(genome, left, right, name, expn_med_fitted_scaled, strand) %>%
+    write.table(., "../../processed_data/peak_tile/active_tiles.bed", 
+                row.names = F, quote = F, sep = '\t', col.names = FALSE)
 ```
 
 
 Identify overlapping active regions
 ```{bash}
-bedtools merge -i ../processed_data/peak_tile/active_tiles.bed -d -120 -s -c 5,6 -o median,distinct > ../processed_data/peak_tile/merged_active_tiles.bed
+bedtools merge -i ../../processed_data/peak_tile/active_tiles.bed -d -120 -s -c 5,6 -o median,distinct > ../../processed_data/peak_tile/merged_active_tiles.bed
 ```
 
 alter columns
 ```{r}
-read.table("../processed_data/peak_tile/merged_active_tiles.bed") %>%
+read.table("../../processed_data/peak_tile/merged_active_tiles.bed") %>%
     mutate(name = paste(V2, "_", V3, "_", V5, sep = "")) %>%
-    select(V1, V2, V3, name, V4, V5) %>%
-    write.table(., "../processed_data/peak_tile/merged_active_tiles.bed",
+    select(V1, V2, V3, name, V5, V4) %>%
+    write.table(., "../../processed_data/peak_tile/merged_active_tiles.bed",
                   col.names = FALSE,
                   sep = '\t',
                   row.names = F,
                   quote = F)
-
 ```
 
 ```{bash}
-bedtools intersect -c -a ../processed_data/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../processed_data/peak_tile/merged_active_tiles.bed -s > ../processed_data/peak_tile/collapsed_per_peak.bed
+bedtools intersect -c -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/peak_tile/merged_active_tiles.bed -s > ../../processed_data/peak_tile/collapsed_per_peak.bed
                                     
 ```
 
 
 3C - number of promoters per peak
 ```{r}
-collapsed_per_Peak <- read.table("../processed_data/peak_tile/collapsed_per_peak.bed")#, col.names = c("genome", 'left', 'right', 'name', 'score', 'strand'))
+collapsed_per_Peak <- read.table("../../processed_data/peak_tile/collapsed_per_peak.bed",
+                                 col.names = c("chrom", 'start', 'end', 'name', 'peak_score',
+                                               'strand', 'score1', 'score2', 'num_sub_peaks'))
 
-ggplot(collapsed_per_Peak, aes(V9)) +
+ggplot(collapsed_per_Peak, aes(num_sub_peaks)) +
     geom_bar(stat = "count", width = .8, fill = '#528ECB', color = 'black') +
     geom_text(stat='count', aes(label=..count..), vjust=-.2, size = 10) +
     scale_y_log10() + annotation_logticks(sides = 'l') + 
@@ -126,23 +135,35 @@ ggplot(collapsed_per_Peak, aes(V9)) +
           axis.title = element_text(size = 20),
           legend.text = element_text(size = 20))
 
-#ggsave("../../Figure3/1C_PromotersPerPeak.pdf")
+ggsave("../../figs/fig3/promoters_per_peak.pdf", units = 'in', 
+       height = 8, width = 10)
 
 ```
 
 Look at frag coverage at subpromoter peaks
 ```{r}
-collapsed_per_Peak %>% mutate(med_size = median(V3-V2)) %>% select(med_size) %>% distinct()
-#median peak size is 243.5
+collapsed_per_Peak %>% 
+    mutate(med_size = median(end - start)) %>% 
+    select(med_size) %>% 
+    distinct()
+# median peak size is 243.5
 
-for (i in c(0:7)){
-  tmp <- collapsed_per_Peak %>% filter(V9 == i) %>% select(V1:V6) %>% filter(V6 == '+')
-  write.table(tmp, paste("../processed_data/subpromoters_plus_", i, ".bed", sep = ''), row.names = F, quote = F, col.names = FALSE, sep = '\t')
+for (i in c(0:7)) {
+    collapsed_per_Peak %>% 
+        filter(num_sub_peaks== i) %>% 
+        select(chrom:strand) %>% 
+        filter(strand == '+') %>% 
+        write.table(paste("../../processed_data/peak_tile/subpromoters_plus_", i, ".bed", sep = ''), 
+                    row.names = F, quote = F, col.names = FALSE, sep = '\t')
 }
 
-for (i in c(0:7)){
-  tmp <- collapsed_per_Peak %>% filter(V9 == i) %>% select(V1:V6) %>% filter(V6 == '-')
-  write.table(tmp, paste("../processed_data/subpromoters_minus_", i, ".bed", sep = ''), row.names = F, quote = F, col.names = FALSE, sep = '\t')
+for (i in c(0:7)) {
+    collapsed_per_Peak %>% 
+        filter(num_sub_peaks == i) %>% 
+        select(chrom:strand) %>% 
+        filter(strand == '-') %>% 
+        write.table(paste("../../processed_data/peak_tile/subpromoters_minus_", i, ".bed", sep = ''), 
+                    row.names = F, quote = F, col.names = FALSE, sep = '\t')
 }
 
 ```
@@ -153,7 +174,8 @@ positions <- seq(10,650,10)-200
 #is.nan.data.frame <- function(x)
 #do.call(cbind, lapply(x, is.nan))
 
-plus_subpromoter <- read.table("../processed_data/plus_subpromoter_counts.txt", skip = 3, fill = TRUE, sep = '\t', header = F)
+plus_subpromoter <- read.table("../../processed_data/peak_tile/plus_subpromoter_counts.txt", 
+                               skip = 3, fill = TRUE, sep = '\t', header = F)
 plus_subpromoter[is.na(plus_subpromoter)] <- 0
 names(plus_subpromoter) <- positions
 
@@ -164,7 +186,8 @@ plus_sub3 <- plus_subpromoter[c(1684:1709),]
 plus_sub4 <- plus_subpromoter[c(1710:1721),]
 
 
-minus_subpromoter <- read.table("../processed_data/minus_subpromoter_counts.txt", skip = 3, fill = TRUE, sep = '\t', header = F)
+minus_subpromoter <- read.table("../../processed_data/peak_tile/minus_subpromoter_counts.txt", 
+                                skip = 3, fill = TRUE, sep = '\t', header = F)
 minus_subpromoter[is.na(minus_subpromoter)] <- 0
 names(minus_subpromoter) <- positions
 
