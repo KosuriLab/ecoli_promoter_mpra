@@ -17,6 +17,9 @@ expression: $(DATA)/peak_tile_expression.txt
 
 format: $(DATA)/peak_tile_expression_formatted.txt
 
+
+.IGNORE: ../../ref/20180508_lb_peak_tile_lib.txt
+
 # map combined reads
 $(MERGE_DEST)/pPeakTiling_82_combined.paired.assembled.fastq: $(RAW_DATA)/bc_map/pPeakTiling_82_combined_R1.fastq.gz \
 	$(RAW_DATA)/bc_map/pPeakTiling_82_combined_R2.fastq.gz ../pearallel.sh
@@ -38,10 +41,26 @@ $(DATA)/peak_tile_combined_bc_map.txt: $(MERGE_DEST)/peak_tile_combined_merged.f
 	--var_start 1 --var_length 150 --min-reads 3 --bad-bcs $(DATA)/bc_map_consensus_bad_bcs.txt > $@
 
 
+# peaks < 150bp were synthesized with flanking stuffer sequence and must be mapped
+# with positive controls, create combined fasta file
+../../ref/peak_tile_short_and_pos_controls.fasta: ../../ref/20180508_lb_peak_tile_lib.txt
+	@ Rscript --vanilla format_short_peaks.R
+	@ python ../format_converter.py ../../ref/20180508_lb_peak_tile_lib_short_peaks_trimmed.txt \
+	tab fasta ../../ref/20180508_lb_peak_tile_lib_short_peaks_trimmed.fasta
+	@ cat ../../ref/20180508_lb_peak_tile_lib_short_peaks_trimmed.fasta \
+	../../ref/synthetic_promoter_pos_controls_formatted.fasta > $@
+
+
+# $(DATA)/peak_tile_combined_controls_bc_map.txt: $(MERGE_DEST)/peak_tile_combined_merged.fastq
+# 	@ python ../barcode_mapping_ecoli_pos_controls.py $< fastq \
+# 	../../ref/synthetic_promoter_pos_controls_formatted.fasta 0 end 20 $(DATA)/peak_tile_combined_controls
+# 	@ rm -f $(DATA)/peak_tile_controls_bbmap.sam
+
 $(DATA)/peak_tile_combined_controls_bc_map.txt: $(MERGE_DEST)/peak_tile_combined_merged.fastq
 	@ python ../barcode_mapping_ecoli_pos_controls.py $< fastq \
-	../../ref/synthetic_promoter_pos_controls_formatted.fasta 0 end 20 $(DATA)/peak_tile_combined_controls
-	@ rm -f $(DATA)/peak_tile_controls_bbmap.sam
+	../../ref/peak_tile_short_and_pos_controls.fasta 0 end 20 $(DATA)/peak_tile_combined_controls
+	@ rm -f $(DATA)/peak_tile_combined_controls_bbmap.sam
+	
 
 # use one FASTQ file to trigger barcode counting
 $(DATA)/counts_rLP5_PeakTiling_LB_DNA1_1_S5_R1_001.txt: $(RAW_DATA)/DNA_RNA/rLP5_PeakTiling_LB_DNA1_1_S5_R1_001.fastq.gz
