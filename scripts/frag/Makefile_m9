@@ -134,7 +134,7 @@ $(DATA)/m9/%_totalRNA_B6_M9_2.bw: $(DATA)/m9/%_totalRNA_B6_M9_2.wig
 
 
 ##### pattern rule for frag matrix #####
-$(DATA)/m9/matrix_%_transcriptome: $(DATA)/m9/%_frag_pileup.bw $(DATA)/m9/minus_antisense_reg_genes.bed
+$(DATA)/m9/matrix_%_promoter: $(DATA)/m9/%_frag_pileup.bw $(DATA)/m9/minus_antisense_reg_genes.bed
 	@ echo "Creating matrix..."
 	@ computeMatrix scale-regions -S $< \
 	-R $(DATA)/m9/$*_sense_reg_genes.bed $(DATA)/m9/$*_antisense_reg_genes.bed \
@@ -143,7 +143,7 @@ $(DATA)/m9/matrix_%_transcriptome: $(DATA)/m9/%_frag_pileup.bw $(DATA)/m9/minus_
 
 
 ##### pattern rule for transcriptome matrix #####
-$(DATA)/m9/matrix_%_promoter: $(DATA)/m9/%_totalRNA_B6_M9_2.bw $(DATA)/m9/minus_antisense_reg_genes.bed
+$(DATA)/m9/matrix_%_transcriptome: $(DATA)/m9/%_totalRNA_B6_M9_2.bw $(DATA)/m9/minus_antisense_reg_genes.bed
 	@ echo "Creating matrix..."
 	@ computeMatrix scale-regions -S $< \
 	-R $(DATA)/m9/$*_sense_reg_genes.bed $(DATA)/m9/$*_antisense_reg_genes.bed \
