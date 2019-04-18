@@ -21,17 +21,9 @@ data_all <- read.table('../../processed_data/peak_tile/peak_tile_expression_form
                        header = T)
 
 negatives <- filter(data_all, category == 'neg_control')
-neg_median <- median(negatives$expn_med_fitted_scaled, na.rm = T)
-neg_sd <- sd(negatives$expn_med_fitted_scaled, na.rm = T)
-# threshold <- neg_median + 2*neg_sd
-neg_mad <- mad(negatives$expn_med_fitted_scaled, na.rm = T)
-# threshold <- neg_median * 2
-threshold <- neg_median + 3*neg_mad
 
 peak_data <- data_all %>% 
-    filter(category == 'tile') %>% 
-    mutate(active = ifelse(expn_med_fitted_scaled >= threshold, 'Active', 'Inactive'))
-
+    filter(category == 'tile')
 
 ```
 
@@ -60,11 +52,12 @@ ggsave('../../figs/fig3/peak_tile_correlation.pdf', units = 'in',
 Figure3B, MraZ Promoter
 
 ```{r cars}
-# threshold <- 1
+threshold <- 1
 peak_data %>% 
     filter(grepl('89077_89780', name)) %>% 
     ggplot(aes(tile_start + peak_start, expn_med_fitted_scaled)) + 
     geom_point(aes(color = active)) +
+    scale_y_continuous(breaks = seq(0.5, 3, 0.5)) +
     geom_hline(yintercept = threshold, linetype = 'dashed') +
     geom_line(linetype = 'dashed') +
     scale_color_manual(values = c('red', 'black')) +

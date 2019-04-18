@@ -57,9 +57,19 @@ set_std_threshold <- function(df) {
     return(df$expn_med_fitted * scale)
 }
 
+set_std_threshold_peak <- function(df) {
+    neg <- filter(df, category == 'neg_control')
+    neg_mad <- mad(neg$expn_med_fitted)
+    neg_median <- median(neg$expn_med_fitted)
+    threshold <- neg_median + (3 * neg_mad)
+    scale = 1 / threshold
+    print(c(threshold, scale))
+    return(df$expn_med_fitted * scale)
+}
+
 tss$expn_med_fitted_scaled <- set_std_threshold(tss)
 scramble$expn_med_fitted_scaled <- set_std_threshold(scramble)
-peak_tile$expn_med_fitted_scaled <- set_std_threshold(peak_tile)
+peak_tile$expn_med_fitted_scaled <- set_std_threshold_peak(peak_tile)
 flp3$expn_med_fitted_scaled <- set_std_threshold(flp3)
 rlp6$expn_med_fitted_scaled <- set_std_threshold(rlp6)
 
@@ -74,6 +84,8 @@ scramble <- scramble %>%
 
 # create active and inactive columns for TSS and alternate landing pads
 tss <- tss %>% 
+    mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
+peak_tile <- peak_tile %>% 
     mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
 flp3 <- flp3 %>% 
     mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
