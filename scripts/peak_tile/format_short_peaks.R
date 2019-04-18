@@ -26,4 +26,4 @@ short_peaks$trimmed_seq <- short_seqs
 # write file
 write.table(select(short_peaks, name, trimmed_seq),
             '../../ref/20180508_lb_peak_tile_lib_short_peaks_trimmed.txt',
-            sep = '\t', row.names = F, quote = F)
+            sep = '\t', row.names = F, quote = F, col.names = F)

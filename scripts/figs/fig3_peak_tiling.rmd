@@ -30,8 +30,6 @@ threshold <- neg_median + 3*neg_mad
 
 peak_data <- data_all %>% 
     filter(category == 'tile') %>% 
-    mutate(peak_length = peak_end - peak_start,
-            tile_start_relative = tile_start/peak_length) %>% 
     mutate(active = ifelse(expn_med_fitted_scaled >= threshold, 'Active', 'Inactive'))
 
 
@@ -101,7 +99,6 @@ Identify overlapping active regions
 bedtools merge -i ../../processed_data/peak_tile/active_tiles.bed -d -120 -s -c 5,6 -o median,distinct > ../../processed_data/peak_tile/merged_active_tiles.bed
 ```
 
-alter columns
 ```{r}
 read.table("../../processed_data/peak_tile/merged_active_tiles.bed") %>%
     mutate(name = paste(V2, "_", V3, "_", V5, sep = "")) %>%
@@ -113,6 +110,7 @@ read.table("../../processed_data/peak_tile/merged_active_tiles.bed") %>%
                   quote = F)
 ```
 
+Identify active tiles that overlap peaks
 ```{bash}
 bedtools intersect -c -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/peak_tile/merged_active_tiles.bed -s > ../../processed_data/peak_tile/collapsed_per_peak.bed
                                     
@@ -123,48 +121,56 @@ bedtools intersect -c -a ../../processed_data/frag/lb/U00096.2_plus_minus_called
 ```{r}
 collapsed_per_Peak <- read.table("../../processed_data/peak_tile/collapsed_per_peak.bed",
                                  col.names = c("chrom", 'start', 'end', 'name', 'peak_score',
-                                               'strand', 'score1', 'score2', 'num_sub_peaks'))
+                                               'strand', 'score1', 'score2', 'num_sub_peaks')) %>% 
+    separate(name, into = c('peak_start', 'peak_end', 'strand'), sep = '_', remove = F, convert = T) %>% 
+    # only consider peaks with mapped tiles, eliminates 123 peaks
+    semi_join(peak_data, by = c('peak_start', 'peak_end'))
 
-ggplot(collapsed_per_Peak, aes(num_sub_peaks)) +
-    geom_bar(stat = "count", width = .8, fill = '#528ECB', color = 'black') +
-    geom_text(stat='count', aes(label=..count..), vjust=-.2, size = 10) +
-    scale_y_log10() + annotation_logticks(sides = 'l') + 
-    labs(x = 'Number of promoter regions per peak', y = "Count") + 
-    scale_x_continuous(breaks = pretty_breaks(n=7)) +
-     theme(axis.text = element_text(size = 20),
-          axis.title = element_text(size = 20),
-          legend.text = element_text(size = 20))
+collapsed_per_Peak %>% 
+    filter(num_sub_peaks < 10) %>% 
+    ggplot(aes(num_sub_peaks)) +
+        geom_bar(stat = "count", width = .8, fill = '#528ECB', color = 'black') +
+        geom_text(stat='count', aes(label=..count..), vjust=-.2, size = 10) +
+        scale_y_log10() + annotation_logticks(sides = 'l') + 
+        labs(x = 'Number of promoter regions per peak', y = "Count") + 
+        scale_x_continuous(breaks = pretty_breaks(n=7)) +
+         theme(axis.text = element_text(size = 20),
+              axis.title = element_text(size = 20),
+              legend.text = element_text(size = 20))
 
-ggsave("../../figs/fig3/promoters_per_peak.pdf", units = 'in', 
+ggsave("../../figs/fig3/promoters_per_peak.pdf", units = 'in',
        height = 8, width = 10)
 
 ```
 
+
 Look at frag coverage at subpromoter peaks
 ```{r}
-collapsed_per_Peak %>% 
-    mutate(med_size = median(end - start)) %>% 
-    select(med_size) %>% 
-    distinct()
-# median peak size is 243.5
+# collapsed_per_Peak %>% 
+#     mutate(med_size = median(end - start)) %>% 
+#     select(med_size) %>% 
+#     distinct()
+# # median peak size is 243.5
+# 
+# for (i in c(0:7)) {
+#     collapsed_per_Peak %>% 
+#         filter(num_sub_peaks== i) %>% 
+#         select(chrom:strand) %>% 
+#         filter(strand == '+') %>% 
+#         write.table(paste("../../processed_data/peak_tile/subpromoters_plus_", i, ".bed", sep = ''), 
+#                     row.names = F, quote = F, col.names = FALSE, sep = '\t')
+# }
+# 
+# for (i in c(0:7)) {
+#     collapsed_per_Peak %>% 
+#         filter(num_sub_peaks == i) %>% 
+#         select(chrom:strand) %>% 
+#         filter(strand == '-') %>% 
+#         write.table(paste("../../processed_data/peak_tile/subpromoters_minus_", i, ".bed", sep = ''), 
+#                     row.names = F, quote = F, col.names = FALSE, sep = '\t')
+# }
 
-for (i in c(0:7)) {
-    collapsed_per_Peak %>% 
-        filter(num_sub_peaks== i) %>% 
-        select(chrom:strand) %>% 
-        filter(strand == '+') %>% 
-        write.table(paste("../../processed_data/peak_tile/subpromoters_plus_", i, ".bed", sep = ''), 
-                    row.names = F, quote = F, col.names = FALSE, sep = '\t')
-}
 
-for (i in c(0:7)) {
-    collapsed_per_Peak %>% 
-        filter(num_sub_peaks == i) %>% 
-        select(chrom:strand) %>% 
-        filter(strand == '-') %>% 
-        write.table(paste("../../processed_data/peak_tile/subpromoters_minus_", i, ".bed", sep = ''), 
-                    row.names = F, quote = F, col.names = FALSE, sep = '\t')
-}
 
 ```
 

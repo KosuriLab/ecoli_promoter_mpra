@@ -21,13 +21,15 @@ data <- data %>%
     separate(name, into = c('peak_start', 'peak_end', 'strand', 'tile_loc'), 
              sep = '_', remove = F, convert = T) %>% 
     mutate(peak_start = as.numeric(peak_start),
-           peak_end = as.numeric(peak_end))
+           peak_end = as.numeric(peak_end),
+           peak_length = peak_end - peak_start)
 
 data <- data %>% 
     mutate(tile_loc = gsub('pos', '', tile_loc)) %>% 
     separate(tile_loc, into = c('tile_start', 'tile_end'),
              sep = '-', convert = T) %>% 
-    mutate(tile_start = as.numeric(tile_start))
+    mutate(tile_start = as.numeric(tile_start),
+           tile_start_relative = tile_start/peak_length)
 
 write.table(data, file = '../../processed_data/peak_tile/peak_tile_expression_formatted.txt',
             quote = F, row.names = F, sep = '\t')
