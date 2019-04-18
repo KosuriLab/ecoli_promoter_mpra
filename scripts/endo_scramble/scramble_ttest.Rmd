@@ -1,0 +1,257 @@
+---
+title: "Identify scrambles that significant change expression with t-test"
+output: html_notebook
+---
+
+First, let's read in the barcode counts and process that data.
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(Biostrings)
+library(ggplot2)
+library(cowplot)
+options(stringsAsFactors = F)
+options(scipen = 10000)
+```
+
+```{r}
+args <- c('../../processed_data/endo_scramble',
+          '../../processed_data/endo_scramble/endo_scramble_combined_bc_map.txt',
+          '../../processed_data/endo_scramble/endo_scramble_combined_controls_bc_map.txt',
+          '../../processed_data/endo_scramble/endo_scramble_expression_formatted.txt')
+count_folder <- args[1]
+bc_map_file <- args[2]
+bc_map_file_controls <- args[3]
+formatted_file <- args[4]
+
+# read in barcode count files
+filelist = list.files(path = count_folder,
+                      pattern = '^counts_*',
+                      full.names = T)
+
+# should be named so files are in following order, 1st number is biological replicate
+# and second number is technical replicate
+sample_names <- c('DNA1_1', 'DNA1_2', 'DNA2_1', 'DNA2_2', 'RNA1_1', 'RNA1_2', 'RNA2_1', 'RNA2_2')
+
+for(i in seq(1:length(filelist))) {
+    sample_name <- sample_names[i]
+    x <- read.table(filelist[i], col.names=c(sample_name, 'barcode'), header = F)
+    x[[sample_name]] <- 1000000*x[[sample_name]]/sum(x[[sample_name]])  #Normalizes by RPM
+    assign(sample_name, x)  
+}
+
+count_list <- list(DNA1_1, DNA1_2, DNA2_1, DNA2_2, RNA1_1, RNA1_2, RNA2_1, RNA2_2)
+ 
+# combine reads for all barcodes 
+# feed list into reduce to full join entire list of data frames
+all_counts <- count_list %>% purrr::reduce(full_join, by = "barcode")
+print(paste("Number of unique sequenced barcodes, all replicates in DNA and RNA:", nrow(all_counts)))
+
+# rearrange columns
+all_counts <- select(all_counts, barcode, DNA1_1, DNA1_2:RNA2_2)
+# remove individual sample files
+rm(count_list, x)
+rm(list = sample_names)
+# read in mapping files
+bc_map <- read.table(bc_map_file, header = F, sep = ',', 
+                       col.names = c('barcode', 'variant', 'count'))
+# read in reference so we can label mapping file
+ref <- read.table(ref_file, col.names = c('name', 'sequence'))
+# add reverse complement for each sequence so we can properly label everything
+ref_with_rc <- ref %>% 
+    mutate(name = paste0(name, '_rc'),
+           sequence = as.character(reverseComplement(DNAStringSet(sequence)))) %>% 
+    select(name, sequence) %>% 
+    bind_rows(select(ref, name, sequence)) %>% 
+    # trim primers so sequence is 150 to match sequence in barcode map
+    mutate(variant = toupper(substr(sequence, 25, 174)))
+# add variant name from reference
+bc_map <- bc_map %>% 
+    left_join(select(ref_with_rc, -sequence), by = 'variant')
+# add in positive controls
+bc_map_controls <- read.table(bc_map_file_controls, header = T, 
+                           col.names = c('barcode', 'num_unique_variant', 'count',
+                                         'count_most_common', 'variant', 'name'))
+bc_map <- bind_rows(bc_map, select(bc_map_controls, barcode, variant, count, name))
+print(paste("Number of barcodes in mapping run:", nrow(bc_map)))
+
+# only keep those that match reference
+bc_map <- filter(bc_map, !is.na(name))
+print(paste("Number of barcodes in mapping run and mapped to reference:", nrow(bc_map)))
+
+# only keep barcode counts for mapped barcodes
+mapped_bc_counts <- inner_join(bc_map, all_counts, by = 'barcode')
+# replace NA with 0
+mapped_bc_counts[is.na(mapped_bc_counts)] <- 0
+print(paste("Number of mapped and sequenced barcodes, all replicates in DNA and RNA:", nrow(mapped_bc_counts)))
+```
+
+We want to test if the difference in group means between the unscrambled and scrambled barcodes is
+significantly different. We'll do this at the barcode level, where each barcode expression measurement
+(DNA/RNA) in each of the four replicates is considered an individual observation. So, if a barcode is present
+in all four replicates, there would be four independent observations for the t-test.
+
+```{r}
+formatted <- read.table(formatted_file, header = T)
+
+mapped_bc_counts <- left_join(mapped_bc_counts, 
+                              select(formatted, tss_name:scramble_pos_rel_tss,
+                                     variant, category), by = 'variant')
+
+# mapped_bc_counts <- mapped_bc_counts %>% 
+#     separate(name, into = c('tss_name', 'tss_pos', 'strand_scramble_loc'), sep = ',', remove = F) %>% 
+#     separate(strand_scramble_loc, into = c('strand', 'scramble_loc'), sep = '_') %>% 
+#     mutate(scramble_loc = gsub('unscrambled', NA, scramble_loc),
+#            scramble_loc = gsub('scrambled', '', scramble_loc)) %>% 
+#     separate(scramble_loc, into = c('scramble_start', 'scramble_end'),
+#              sep = '-', convert = T) %>% 
+#     mutate(category = case_when(grepl('_scrambled', name) ~ 'scramble',
+#                                 grepl('_unscrambled', name) ~ 'unscrambled',
+#                                 grepl('pos_control', name) ~ 'pos_control',
+#                                 grepl('neg_control', name) ~ 'neg_control'))
+# 
+# # separately parse negative controls 
+# negative_scrambles <- mapped_bc_counts %>% 
+#     filter(category == 'scramble', grepl('neg_control', name)) %>% 
+#     separate(tss_name, into = c('tss_name', 'scramble_loc'), sep = '_scrambled') %>% 
+#     mutate(scramble_loc = gsub('_flipped_rc', '', scramble_loc)) %>% 
+#     separate(scramble_loc, into = c('scramble_start', 'scramble_end'), sep = '-', convert = T)
+# 
+# negative_unscrambles <- mapped_bc_counts %>% 
+#     filter(grepl('neg_control', name), category == 'unscrambled') %>% 
+#     separate(name, into = c('tss_name', 'extra'), sep = '_unscrambled', remove = F) %>% 
+#     select(-extra)
+# 
+# mapped_bc_counts <- mapped_bc_counts %>% 
+#     filter(!grepl('neg_control', name)) %>% 
+#     bind_rows(negative_scrambles, negative_unscrambles) %>% 
+#     bind_rows(filter(mapped_bc_counts, category == 'neg_control'))
+# 
+# rm(negative_scrambles, negative_unscrambles)
+
+mapped_bc_counts_melt <- mapped_bc_counts %>% 
+    mutate(expn_1_1 = RNA1_1 / DNA1_1,
+        expn_1_2 = RNA1_2 / DNA1_2,
+        expn_2_1 = RNA2_1 / DNA2_1,
+        expn_2_2 = RNA2_2 / DNA2_2) %>% 
+    select(name, tss_name, category, expn_1_1:expn_2_2) %>% 
+    reshape2::melt(id = c('name', 'tss_name', 'category'), value.name = 'expn')
+
+scrambled_bcs <- mapped_bc_counts_melt %>% 
+    filter(category == 'scramble')
+
+unscrambled_bcs <- mapped_bc_counts_melt %>% 
+    filter(category == 'unscrambled')
+```
+
+Now, let's calculate expression at the variant level.
+ ```{r}
+# # DNA filter
+# expression <- mapped_bc_counts %>% 
+#     group_by(variant) %>% 
+#     mutate(num_barcodes_mapped = n()) %>%
+#     filter(DNA1_1 > 0, DNA1_2 > 0, DNA2_1 > 0, DNA2_2 > 0) %>%
+#     mutate(num_barcodes_integrated = n()) %>%
+#     # filter out promoters with fewer than 3 barcodes integrated
+#     filter(num_barcodes_integrated >= 3) %>% 
+#     mutate(RNA_exp_sum_1_1 = sum(RNA1_1)/(sum(DNA1_1)),
+#            RNA_exp_sum_1_2 = sum(RNA1_2)/(sum(DNA1_2)),
+#            RNA_exp_sum_2_1 = sum(RNA2_1)/(sum(DNA2_1)),
+#            RNA_exp_sum_2_2 = sum(RNA2_2)/(sum(DNA2_2)),
+#            RNA_exp_sum_1 = ((RNA_exp_sum_1_1+RNA_exp_sum_1_2)/2),
+#            RNA_exp_sum_2 = ((RNA_exp_sum_2_1+RNA_exp_sum_2_2)/2),
+#            RNA_exp_sum_ave = ((RNA_exp_sum_1+RNA_exp_sum_2)/2),
+#            DNA_1 = (sum(DNA1_1)+sum(DNA1_2)),
+#            DNA_2 = (sum(DNA2_1)+sum(DNA2_2)),
+#            DNA_ave = ((DNA_1 + DNA_2)/2),
+#            expn_1_1 = RNA1_1 / DNA1_1,
+#            expn_1_2 = RNA1_2 / DNA1_2,
+#            expn_2_1 = RNA2_1 / DNA2_1,
+#            expn_2_2 = RNA2_2 / DNA2_2,
+#            expn_med1 = median(c(expn_1_1, expn_1_2), na.rm = T),
+#            expn_med2 = median(c(expn_2_1, expn_2_2), na.rm = T),
+#            expn_med = (expn_med1 + expn_med2)/2) %>%
+#     ungroup() %>%
+#     select(variant, orig_name = name, tss_name, tss_pos, strand, scramble_start,
+#            scramble_end, category,
+#            RNA_exp_sum_1_1, RNA_exp_sum_1_2, RNA_exp_sum_2_1, RNA_exp_sum_2_2,
+#            RNA_exp_sum_1, RNA_exp_sum_2, RNA_exp_sum_ave, DNA_1, DNA_2, DNA_ave,
+#            expn_med, num_barcodes_mapped, num_barcodes_integrated) %>% 
+#     distinct()
+```
+
+Handle separately any cases where the complement and reverse complement both appear in barcode mapping.
+
+```{r}
+# duplicates_to_delete <- expression %>% 
+#     mutate(name = gsub('_rc', '', orig_name)) %>% 
+#     group_by(name) %>% 
+#     filter(n() > 1) %>% 
+#     filter(expn_med == min(expn_med)) %>% 
+#     ungroup()
+# 
+# expression <- expression %>% 
+#     anti_join(duplicates_to_delete, by = 'orig_name')
+```
+
+
+```{r}
+ttest_custom <- function(df, df_wt) {
+    wt_name <- df$tss_name[1]
+    # bind unscrambled barcodes to df
+    df_with_wt <- bind_rows(df,
+                            filter(df_wt, tss_name == wt_name)) %>% 
+        mutate(category_fctr = factor(category)) %>% 
+        filter(!is.na(expn), is.finite(expn))
+    result <- tryCatch(
+        {
+            t.test(expn ~ category_fctr, df_with_wt)
+        }, warning = function(cond) {
+            return(NA)
+        }, error = function(cond) {
+            return(NA)
+        }
+    )
+    return(result)
+}
+
+test <- filter(scrambled_bcs, name == 'TSS_10266_regulondb,2723831,-_scrambled5-15_flipped_rc')
+
+scramble_ttests <- scrambled_bcs %>% 
+    group_by(name, tss_name) %>% 
+    do(ttest = ttest_custom(., df_wt = unscrambled_bcs)) %>% 
+    broom::tidy(ttest) %>% 
+    ungroup()
+```
+
+```{r}
+scramble_ttests <- scramble_ttests %>% 
+    select(name, tss_name, mean_diff = estimate, mean_scramble = estimate1,
+           mean_unscrambled = estimate2, tstat = statistic, p.value,
+           conf.low, conf.high)
+
+scramble_ttests %>% 
+    filter(is.na(mean_diff)) %>% nrow()
+```
+
+```{r}
+# adjust p-value, don't include scrambles that weren't tested because there were
+# insufficient barcodes
+n <- nrow(filter(scramble_ttests, !is.na(mean_diff)))
+scramble_ttests$p.value.fdr <- p.adjust(scramble_ttests$p.value, n = n)
+
+scramble_ttests <- scramble_ttests %>% 
+    mutate(site_type_ttest = case_when(.$mean_diff < 0 ~ 'reduced',
+                                 .$mean_diff > 0 ~ 'increased'),
+           significant = ifelse(p.value.fdr <= 0.05, T, F))
+```
+
+```{r}
+# write results
+write.table(scramble_ttests, file = '../../processed_data/endo_scramble/endo_scramble_ttests.txt',
+            row.names = F, quote = F, sep = '\t')
+```
+
+
