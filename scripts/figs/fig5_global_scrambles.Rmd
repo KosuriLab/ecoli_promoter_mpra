@@ -40,7 +40,11 @@ data %>%
     labs(x = 'wild-type expression',
          y = 'relative expression',
          color = 'significant\nFDR-adjusted\nt-test') +
-    theme(aspect.ratio = 1)
+    theme(aspect.ratio = 1,
+          axis.text = element_text(size = 20),
+          axis.title = element_text(size = 20),
+          legend.text = element_text(size = 20),
+          legend.title = element_text(size = 20))
 
 ggsave('../../figs/fig5/fig5a_scramble_ttest.pdf', unit = 'in', 
        height = 5, width = 7)
