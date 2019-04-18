@@ -18,7 +18,7 @@ expression: $(DATA)/peak_tile_expression.txt
 format: $(DATA)/peak_tile_expression_formatted.txt
 
 
-.IGNORE: ../../ref/20180508_lb_peak_tile_lib.txt
+.IGNORE: ../../ref/20180508_lb_peak_tile_lib.txt $(DATA)/peak_tile_expression_formatted_std.txt
 
 # map combined reads
 $(MERGE_DEST)/pPeakTiling_82_combined.paired.assembled.fastq: $(RAW_DATA)/bc_map/pPeakTiling_82_combined_R1.fastq.gz \
@@ -51,11 +51,6 @@ $(DATA)/peak_tile_combined_bc_map.txt: $(MERGE_DEST)/peak_tile_combined_merged.f
 	../../ref/synthetic_promoter_pos_controls_formatted.fasta > $@
 
 
-# $(DATA)/peak_tile_combined_controls_bc_map.txt: $(MERGE_DEST)/peak_tile_combined_merged.fastq
-# 	@ python ../barcode_mapping_ecoli_pos_controls.py $< fastq \
-# 	../../ref/synthetic_promoter_pos_controls_formatted.fasta 0 end 20 $(DATA)/peak_tile_combined_controls
-# 	@ rm -f $(DATA)/peak_tile_controls_bbmap.sam
-
 $(DATA)/peak_tile_combined_controls_bc_map.txt: $(MERGE_DEST)/peak_tile_combined_merged.fastq
 	@ python ../barcode_mapping_ecoli_pos_controls.py $< fastq \
 	../../ref/peak_tile_short_and_pos_controls.fasta 0 end 20 $(DATA)/peak_tile_combined_controls
@@ -74,5 +69,8 @@ $(DATA)/peak_tile_expression.txt: $(DATA)/peak_tile_combined_bc_map.txt $(DATA)/
 
 $(DATA)/peak_tile_expression_formatted.txt: $(DATA)/peak_tile_expression.txt
 	@ Rscript --vanilla peak_tile_format.R $< $@
+
+
+############ Data for figures, depends on standardized expression #############
 
 
