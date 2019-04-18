@@ -292,25 +292,26 @@ minus_sense_prom <-minus_prom_exp[c(1:581),]
 minus_anti_prom <-minus_prom_exp[c(582:841),]
 minus_dual_prom <- minus_prom_exp[c(842:957),]
 
+
 prom_mean_sense <- rbind(plus_sense_prom, minus_sense_prom) %>%
     as.matrix() %>% colMedians(na.rm = TRUE)  %>%
     rbind(positions, .) %>% t() %>%
     as.data.frame() %>% 
-    mutate(type = 'Sense Regulated \n (N=1,424)')
+    mutate(type = 'Sense Regulated \n (N=1,174)')
 names(prom_mean_sense) <- c('position', 'coverage', 'Type')
 
 prom_mean_dual <- rbind(plus_dual_prom, minus_dual_prom) %>%
     as.matrix() %>% colMedians(na.rm = TRUE)  %>%
     rbind(positions, .) %>% t() %>%
     as.data.frame() %>% 
-    mutate(type = 'Dual Regulated \n (N=272)')
+    mutate(type = 'Dual Regulated \n (N=234)')
 names(prom_mean_dual) <- c('position', 'coverage', 'Type')
 
 prom_mean_anti <- rbind(plus_anti_prom, minus_anti_prom) %>%
     as.matrix() %>% colMedians(na.rm = TRUE)  %>%
     rbind(positions, .) %>% t() %>%
     as.data.frame() %>% 
-    mutate(type = 'Antisense Regulated \n (N=905)')
+    mutate(type = 'Antisense Regulated \n (N=516)')
 names(prom_mean_anti) <- c('position', 'coverage', 'Type')
 
 
@@ -318,9 +319,9 @@ b <- rbind(prom_mean_sense, prom_mean_anti, prom_mean_dual) %>%
     ggplot(., aes(x = position, y = coverage)) +
     geom_area(alpha = 0, size = 1.1, position = 'identity', aes(color = Type)) + 
     geom_vline(xintercept = c(300,1150), linetype = 'dashed') +
-    scale_color_manual(breaks = c('Sense Regulated \n (N=1,424)', 
-                                  'Antisense Regulated \n (N=905)', 
-                                  "Dual Regulated \n (N=272)"),
+    scale_color_manual(breaks = c('Sense Regulated \n (N=1,174)', 
+                                  'Antisense Regulated \n (N=516)', 
+                                  "Dual Regulated \n (N=234)"),
                        values = c('firebrick3','purple', '#2E6EB7')) +
     labs(x ='Position Relative to Gene',
          y = 'Median Promoter Activity',
@@ -335,7 +336,7 @@ b <- rbind(prom_mean_sense, prom_mean_anti, prom_mean_dual) %>%
 plot_grid(a, b, ncol = 2)
 
 ggsave('../../figs/fig2/metagene_activity.pdf', units = 'in',
-       height = 4, width = 13)
+       height = 3.5, width = 13)
 ```
 
 
