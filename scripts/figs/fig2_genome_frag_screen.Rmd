@@ -334,8 +334,8 @@ b <- rbind(prom_mean_sense, prom_mean_anti, prom_mean_dual) %>%
 
 plot_grid(a, b, ncol = 2)
 
-# ggsave('../../figs/fig2/metagene_activity.pdf', units = 'in',
-#        height = 5, width = 13)
+ggsave('../../figs/fig2/metagene_activity.pdf', units = 'in',
+       height = 3, width = 13)
 ```
 
 
