@@ -82,21 +82,20 @@ if __name__ == '__main__':
 	
 	args = parser.parse_args()
 
-	sequences = args.sequences
-	seq_length = args.seq_length
-	num_layers = args.num_layers
-	min_filter = args.min_filter
-	max_filter = args.max_filter
-	test_fraction = args.test_fraction
-	validation_fraction = args.validation_fraction
-	num_hyperparameter_trials = args.num_trials
-
-
 	# load in pre-defined splits
+	seq_length = args.seq_length
 	print("loading training set...")
 	X_train, y_train = process_seqs(args.train, seq_length)
 	print("loading test set...")
 	X_test, y_test = process_seqs(args.test, seq_length)
+
+	
+	num_layers = args.num_layers
+	min_filter = args.min_filter
+	max_filter = args.max_filter
+	validation_fraction = args.validation_fraction
+	num_hyperparameter_trials = args.num_trials
+	prefix = args.prefix
 
 
 	# split training into validation set
@@ -133,6 +132,6 @@ if __name__ == '__main__':
 	# Test model
 	print('Test results: {}'.format(model.score(X_test, y_test)))
 	# save model
-	model.save('hyperparam_tuned_model')
+	model.save(prefix)
 
 
