@@ -17,6 +17,8 @@ expression: $(DATA)/peak_tile_expression.txt
 
 format: $(DATA)/peak_tile_expression_formatted.txt
 
+split: $(DATA)/peak_tile_expression_90train.txt
+
 
 .IGNORE: ../../ref/20180508_lb_peak_tile_lib.txt $(DATA)/peak_tile_expression_formatted_std.txt
 
@@ -73,4 +75,7 @@ $(DATA)/peak_tile_expression_formatted.txt: $(DATA)/peak_tile_expression.txt
 
 ############ Data for figures, depends on standardized expression #############
 
+$(DATA)/peak_tile_expression_90train.txt: $(DATA)/peak_tile_expression_formatted_std.txt
+	@ echo "Splitting into test and train..."
+	@ Rscript --vanilla peak_tile_train_test_split.R
 
