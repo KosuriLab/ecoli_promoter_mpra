@@ -27,3 +27,28 @@ write.table(select(data_train, variant, expn_med_fitted_scaled),
 write.table(select(data_test, variant, expn_med_fitted_scaled),
             file = '../../processed_data/peak_tile/peak_tile_expression_10test.txt',
             sep  = '\t', col.names = F, row.names = F, quote = F)
+
+
+writeFasta <- function(data, filename){
+    fastaLines = c()
+    for (rowNum in 1:nrow(data)){
+        fastaLines = c(fastaLines, as.character(paste(">", data[rowNum,"name"], sep = "")))
+        fastaLines = c(fastaLines,as.character(data[rowNum,"variant"]))
+    }
+    fileConn<-file(filename)
+    writeLines(fastaLines, fileConn)
+    close(fileConn)
+}
+
+# write files for classification, split by active/inactive
+writeFasta(filter(data_train, active == 'active') %>% select(name, variant),
+           filename = '../../processed_data/peak_tile/peak_tile_expression_90train_active.fasta')
+
+writeFasta(filter(data_train, active == 'inactive') %>% select(name, variant),
+           filename = '../../processed_data/peak_tile/peak_tile_expression_90train_inactive.fasta')
+
+writeFasta(filter(data_test, active == 'active') %>% select(name, variant),
+           filename = '../../processed_data/peak_tile/peak_tile_expression_10test_active.fasta')
+
+writeFasta(filter(data_test, active == 'inactive') %>% select(name, variant),
+           filename = '../../processed_data/peak_tile/peak_tile_expression_10test_inactive.fasta')
