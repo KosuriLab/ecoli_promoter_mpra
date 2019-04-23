@@ -129,9 +129,25 @@ if __name__ == '__main__':
 	searcher.search(num_hyperparameter_trials)
 	print('Best hyperparameters: {}'.format(searcher.best_hyperparameters))
 	model = searcher.best_model
-	# Test model
+	
+	# print test results
 	print('Test results: {}'.format(model.score(X_test, y_test)))
+	
 	# save model
 	model.save(prefix)
+	
+	# print predictions
+	predictions = model.predict(X_test)
+	test_sequences = [line.split('\t')[0] for line in open(args.test)]
+	
+	with open(prefix + '_predictions.txt', 'w') as outfile:
+		for i in range(len(predictions)):
+			outfile.write(
+				test_sequences[i] + '\t' + 
+				str(float(predictions[i])) + '\t' + 
+				str(float(y_test[i])) + '\n')
+
+
+
 
 
