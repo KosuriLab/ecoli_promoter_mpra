@@ -54,7 +54,7 @@ ggsave('../../figs/fig5/fig5a_scramble_ttest.pdf', unit = 'in',
 Figure5D - Looking at disagreed scrambles
 
 ```{r}
-scrambled_merged <- read.table("../../processed_data/endo_scramble/scramble_merged_sites.txt", header = T)
+scramble_merged <- read.table("../../processed_data/endo_scramble/scramble_merged_sites.txt", header = T)
 
 scramble_merged %>% 
     # filter(!is.na(tf_concordance)) %>% 
@@ -65,11 +65,14 @@ scramble_merged %>%
     geom_bar(stat = 'identity', position = 'dodge', aes(fill = tf_concordance)) +
     scale_y_continuous(breaks = seq(0, 1200, 100)) +
     # axis.break(axis = 1, breakpos = 500) +
-    scale_fill_manual(values = c('gray38', 'navyblue'), na.value = 'gray38') +
+    scale_fill_manual(values = c('#FFBC42', '#0496FF'), na.value = 'gray38') +
     labs(x = 'TFBS gene expression effect', y = 'count', 
          fill = 'concordance',
          title = 'merged scramble sites') +
     theme(legend.position = 'top', aspect.ratio = 1)
+
+# ggsave('../../figs/fig5/fig5d_regulondb_concordance.pdf', units = 'in',
+#        width = 8, height = 5)
 ```
 
 
