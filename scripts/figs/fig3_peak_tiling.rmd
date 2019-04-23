@@ -62,7 +62,7 @@ peak_data %>%
     geom_line(linetype = 'dashed') +
     scale_color_manual(values = c('red', 'black')) +
     labs(x = 'Tile Start Position', y = 'Expression', color = '', title = "mraZ Promoter") +
-    # annotate("text", label = "Activity Threshold", x = 89125, y = threshold) +
+    annotate("text", label = "Activity Threshold", x = 89125, y = threshold+.1) +
     theme(axis.text = element_text(size = 20),
           axis.title = element_text(size = 20),
           title = element_text(size = 24),
@@ -75,7 +75,7 @@ ggsave("../../figs/fig3/fig3b_MraZPromoter.pdf", units = 'in',
 
 Subset active promoters and print for merging
 ```{r}
-peak_data %>% filter(expn_med_fitted_scaled > threshold) %>% nrow()  #10722 sequences with more active expression
+peak_data %>% filter(expn_med_fitted_scaled > threshold) %>% nrow()  #14912 sequences with more active expression
 
 peak_data %>% filter(expn_med_fitted_scaled > threshold) %>%
     mutate(genome = "U00096.2",
@@ -90,7 +90,7 @@ peak_data %>% filter(expn_med_fitted_scaled > threshold) %>%
 Identify overlapping active regions
 
 ```{bash}
-bedtools merge -i ../../processed_data/peak_tile/active_tiles.bed -d -120 -s -c 5,6 -o median,distinct > ../../processed_data/peak_tile/merged_active_tiles.bed
+bedtools merge -i ../../processed_data/peak_tile/active_tiles.bed -d -100 -s -c 5,6 -o median,distinct > ../../processed_data/peak_tile/merged_active_tiles.bed
 ```
 
 ```{r}
