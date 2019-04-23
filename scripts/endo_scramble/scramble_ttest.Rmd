@@ -5,13 +5,14 @@ output: html_notebook
 
 First, let's read in the barcode counts and process that data.
 
-```{r}
+```{r, echo = F}
 library(dplyr)
 library(tidyr)
 library(purrr)
 library(Biostrings)
 library(ggplot2)
 library(cowplot)
+library(plotrix)
 options(stringsAsFactors = F)
 options(scipen = 10000)
 ```
@@ -54,22 +55,17 @@ all_counts <- select(all_counts, barcode, DNA1_1, DNA1_2:RNA2_2)
 # remove individual sample files
 rm(count_list, x)
 rm(list = sample_names)
+
 # read in mapping files
 bc_map <- read.table(bc_map_file, header = F, sep = ',', 
                        col.names = c('barcode', 'variant', 'count'))
-# read in reference so we can label mapping file
-ref <- read.table(ref_file, col.names = c('name', 'sequence'))
-# add reverse complement for each sequence so we can properly label everything
-ref_with_rc <- ref %>% 
-    mutate(name = paste0(name, '_rc'),
-           sequence = as.character(reverseComplement(DNAStringSet(sequence)))) %>% 
-    select(name, sequence) %>% 
-    bind_rows(select(ref, name, sequence)) %>% 
-    # trim primers so sequence is 150 to match sequence in barcode map
-    mutate(variant = toupper(substr(sequence, 25, 174)))
-# add variant name from reference
+
+# read in formatted file so we can label mapping file
+data <- read.table(formatted_file, header = T)
+
 bc_map <- bc_map %>% 
-    left_join(select(ref_with_rc, -sequence), by = 'variant')
+    left_join(select(data, name, variant), by = 'variant')
+
 # add in positive controls
 bc_map_controls <- read.table(bc_map_file_controls, header = T, 
                            col.names = c('barcode', 'num_unique_variant', 'count',
@@ -94,42 +90,9 @@ significantly different. We'll do this at the barcode level, where each barcode 
 in all four replicates, there would be four independent observations for the t-test.
 
 ```{r}
-formatted <- read.table(formatted_file, header = T)
-
 mapped_bc_counts <- left_join(mapped_bc_counts, 
-                              select(formatted, tss_name:scramble_pos_rel_tss,
+                              select(data, tss_name:scramble_pos_rel_tss,
                                      variant, category), by = 'variant')
-
-# mapped_bc_counts <- mapped_bc_counts %>% 
-#     separate(name, into = c('tss_name', 'tss_pos', 'strand_scramble_loc'), sep = ',', remove = F) %>% 
-#     separate(strand_scramble_loc, into = c('strand', 'scramble_loc'), sep = '_') %>% 
-#     mutate(scramble_loc = gsub('unscrambled', NA, scramble_loc),
-#            scramble_loc = gsub('scrambled', '', scramble_loc)) %>% 
-#     separate(scramble_loc, into = c('scramble_start', 'scramble_end'),
-#              sep = '-', convert = T) %>% 
-#     mutate(category = case_when(grepl('_scrambled', name) ~ 'scramble',
-#                                 grepl('_unscrambled', name) ~ 'unscrambled',
-#                                 grepl('pos_control', name) ~ 'pos_control',
-#                                 grepl('neg_control', name) ~ 'neg_control'))
-# 
-# # separately parse negative controls 
-# negative_scrambles <- mapped_bc_counts %>% 
-#     filter(category == 'scramble', grepl('neg_control', name)) %>% 
-#     separate(tss_name, into = c('tss_name', 'scramble_loc'), sep = '_scrambled') %>% 
-#     mutate(scramble_loc = gsub('_flipped_rc', '', scramble_loc)) %>% 
-#     separate(scramble_loc, into = c('scramble_start', 'scramble_end'), sep = '-', convert = T)
-# 
-# negative_unscrambles <- mapped_bc_counts %>% 
-#     filter(grepl('neg_control', name), category == 'unscrambled') %>% 
-#     separate(name, into = c('tss_name', 'extra'), sep = '_unscrambled', remove = F) %>% 
-#     select(-extra)
-# 
-# mapped_bc_counts <- mapped_bc_counts %>% 
-#     filter(!grepl('neg_control', name)) %>% 
-#     bind_rows(negative_scrambles, negative_unscrambles) %>% 
-#     bind_rows(filter(mapped_bc_counts, category == 'neg_control'))
-# 
-# rm(negative_scrambles, negative_unscrambles)
 
 mapped_bc_counts_melt <- mapped_bc_counts %>% 
     mutate(expn_1_1 = RNA1_1 / DNA1_1,
@@ -146,58 +109,7 @@ unscrambled_bcs <- mapped_bc_counts_melt %>%
     filter(category == 'unscrambled')
 ```
 
-Now, let's calculate expression at the variant level.
- ```{r}
-# # DNA filter
-# expression <- mapped_bc_counts %>% 
-#     group_by(variant) %>% 
-#     mutate(num_barcodes_mapped = n()) %>%
-#     filter(DNA1_1 > 0, DNA1_2 > 0, DNA2_1 > 0, DNA2_2 > 0) %>%
-#     mutate(num_barcodes_integrated = n()) %>%
-#     # filter out promoters with fewer than 3 barcodes integrated
-#     filter(num_barcodes_integrated >= 3) %>% 
-#     mutate(RNA_exp_sum_1_1 = sum(RNA1_1)/(sum(DNA1_1)),
-#            RNA_exp_sum_1_2 = sum(RNA1_2)/(sum(DNA1_2)),
-#            RNA_exp_sum_2_1 = sum(RNA2_1)/(sum(DNA2_1)),
-#            RNA_exp_sum_2_2 = sum(RNA2_2)/(sum(DNA2_2)),
-#            RNA_exp_sum_1 = ((RNA_exp_sum_1_1+RNA_exp_sum_1_2)/2),
-#            RNA_exp_sum_2 = ((RNA_exp_sum_2_1+RNA_exp_sum_2_2)/2),
-#            RNA_exp_sum_ave = ((RNA_exp_sum_1+RNA_exp_sum_2)/2),
-#            DNA_1 = (sum(DNA1_1)+sum(DNA1_2)),
-#            DNA_2 = (sum(DNA2_1)+sum(DNA2_2)),
-#            DNA_ave = ((DNA_1 + DNA_2)/2),
-#            expn_1_1 = RNA1_1 / DNA1_1,
-#            expn_1_2 = RNA1_2 / DNA1_2,
-#            expn_2_1 = RNA2_1 / DNA2_1,
-#            expn_2_2 = RNA2_2 / DNA2_2,
-#            expn_med1 = median(c(expn_1_1, expn_1_2), na.rm = T),
-#            expn_med2 = median(c(expn_2_1, expn_2_2), na.rm = T),
-#            expn_med = (expn_med1 + expn_med2)/2) %>%
-#     ungroup() %>%
-#     select(variant, orig_name = name, tss_name, tss_pos, strand, scramble_start,
-#            scramble_end, category,
-#            RNA_exp_sum_1_1, RNA_exp_sum_1_2, RNA_exp_sum_2_1, RNA_exp_sum_2_2,
-#            RNA_exp_sum_1, RNA_exp_sum_2, RNA_exp_sum_ave, DNA_1, DNA_2, DNA_ave,
-#            expn_med, num_barcodes_mapped, num_barcodes_integrated) %>% 
-#     distinct()
-```
-
-Handle separately any cases where the complement and reverse complement both appear in barcode mapping.
-
-```{r}
-# duplicates_to_delete <- expression %>% 
-#     mutate(name = gsub('_rc', '', orig_name)) %>% 
-#     group_by(name) %>% 
-#     filter(n() > 1) %>% 
-#     filter(expn_med == min(expn_med)) %>% 
-#     ungroup()
-# 
-# expression <- expression %>% 
-#     anti_join(duplicates_to_delete, by = 'orig_name')
-```
-
-
-```{r}
+```{r, echo = F}
 ttest_custom <- function(df, df_wt) {
     wt_name <- df$tss_name[1]
     # bind unscrambled barcodes to df
@@ -217,7 +129,7 @@ ttest_custom <- function(df, df_wt) {
     return(result)
 }
 
-test <- filter(scrambled_bcs, name == 'TSS_10266_regulondb,2723831,-_scrambled5-15_flipped_rc')
+# test <- filter(scrambled_bcs, name == 'TSS_10266_regulondb,2723831,-_scrambled5-15_flipped_rc')
 
 scramble_ttests <- scrambled_bcs %>% 
     group_by(name, tss_name) %>% 
@@ -246,12 +158,179 @@ scramble_ttests <- scramble_ttests %>%
     mutate(site_type_ttest = case_when(.$mean_diff < 0 ~ 'reduced',
                                  .$mean_diff > 0 ~ 'increased'),
            significant = ifelse(p.value.fdr <= 0.05, T, F))
+
+# format name
+scramble_ttests <- scramble_ttests %>% 
+    mutate(name = gsub('_rc', '', name))
 ```
 
 ```{r}
 # write results
 write.table(scramble_ttests, file = '../../processed_data/endo_scramble/endo_scramble_ttests.txt',
             row.names = F, quote = F, sep = '\t')
+```
+
+Merge significant scrambles, by type (increased/reduced)
+
+```{r}
+scramble_ttests %>% 
+    filter(significant == T, site_type_ttest == 'increased') %>% 
+    mutate(chrom = 'U00096.2') %>% 
+    left_join(., select(data, name, scramble_start_pos, scramble_end_pos), by = 'name') %>% 
+    filter(!is.na(scramble_start_pos)) %>% 
+    select(chrom, scramble_start_pos, scramble_end_pos, name, mean_diff, site_type_ttest) %>% 
+    arrange(scramble_start_pos) %>% 
+    write.table( '../../processed_data/endo_scramble/scrambles_ttest_increased.bed',
+            sep = '\t', col.names = F, row.names = F, quote = F)
+
+scramble_ttests %>% 
+    filter(significant == T, site_type_ttest == 'reduced') %>% 
+    mutate(chrom = 'U00096.2') %>% 
+    left_join(., select(data, name, scramble_start_pos, scramble_end_pos), by = 'name') %>% 
+    filter(!is.na(scramble_start_pos)) %>% 
+    select(chrom, scramble_start_pos, scramble_end_pos, name, mean_diff, site_type_ttest) %>% 
+    arrange(scramble_start_pos) %>% 
+    write.table( '../../processed_data/endo_scramble/scrambles_ttest_reduced.bed',
+            sep = '\t', col.names = F, row.names = F, quote = F)
+```
+
+```{bash}
+bedtools merge -i ../../processed_data/endo_scramble/scrambles_ttest_increased.bed -c 5,4,4 -o mean,distinct,count_distinct > ../../processed_data/endo_scramble/scrambles_ttest_increased_merged.bed
+
+bedtools merge -i ../../processed_data/endo_scramble/scrambles_ttest_reduced.bed -c 5,4,4 -o mean,distinct,count_distinct > ../../processed_data/endo_scramble/scrambles_ttest_reduced_merged.bed
+
+```
+
+
+```{r}
+scramble_merged <- bind_rows(
+    read.table('../../processed_data/endo_scramble/scrambles_ttest_increased_merged.bed',
+               header = F, sep = '\t', 
+               col.names = c('chrom', 'scramble_start_pos', 'scramble_end_pos',
+                             'mean_group_diff', 'scrambles', 'num_scrambles')) %>% mutate(site_type = 'increased'),
+    read.table('../../processed_data/endo_scramble/scrambles_ttest_reduced_merged.bed',
+               header = F, sep = '\t', 
+               col.names = c('chrom', 'scramble_start_pos', 'scramble_end_pos',
+                             'mean_group_diff', 'scrambles', 'num_scrambles')) %>% mutate(site_type = 'reduced'))
+
+table(scramble_merged$site_type)
+```
+
+Overlap TF sites with merged sites
+
+```{r}
+# http://regulondb.ccg.unam.mx/menu/download/datasets/files/BindingSiteSet.txt
+tf_sites_all <- read.table('../../ref/regulondb_tfbs_U00096.2.txt', comment.char = '#',
+                       header = F, sep = '\t',
+                       col.names = c('tf_id', 'tf_name', 'tfbs_id', 'tfbs_left',
+                                     'tfbs_right', 'strand', 'tf_gene_id', 'tx_unit',
+                                     'expression_effect', 'promoter_name',
+                                     'center_pos_relative_tss', 'tfbs_sequence',
+                                     'evidence'))
+
+# extract TFBS from sequence, in upper case
+# grab upper case part of site corresponding to binding site
+extract_upper <- function(string, toString) {
+    replace_lower <- strsplit(string, "[[:lower:]]*")[[1]]
+    only_upper <- replace_lower[replace_lower != ""]
+    if(toString == T) {
+        return(paste(only_upper, collapse = ''))
+    }
+    else{
+        return(only_upper)
+    }
+}
+
+tf_sites_all$tfbs <- unlist(lapply(tf_sites_all$tfbs_sequence, extract_upper, toString = T))
+
+tf_sites <- tf_sites_all %>% 
+    distinct(tf_name, tfbs_left, tfbs_right, expression_effect) %>% 
+    filter(tfbs_left != 0) %>% 
+    arrange(tfbs_left)
+
+tf_sites %>% 
+    mutate(chrom = 'U00096.2') %>% 
+    select(chrom, tfbs_left, tfbs_right, tf_name) %>% 
+    write.table('../../processed_data/endo_scramble/tf_sites.bed', 
+                sep = '\t', col.names = F, row.names = F, quote = F)
+```
+
+```{bash}
+# require 10% of TFBS to overlap with merged site, report overlap or NULL
+cut -f 1,2,3,5 ../../processed_data/endo_scramble/scrambles_ttest_increased_merged.bed | bedtools intersect -a stdin -b ../../processed_data/endo_scramble/tf_sites.bed -loj -F 0.10 > ../../processed_data/endo_scramble/scrambles_ttest_increased_merged_tf_overlap10.bed
+
+cut -f 1,2,3,5 ../../processed_data/endo_scramble/scrambles_ttest_reduced_merged.bed | bedtools intersect -a stdin -b ../../processed_data/endo_scramble/tf_sites.bed -loj -F 0.10 > ../../processed_data/endo_scramble/scrambles_ttest_reduced_merged_tf_overlap10.bed
+```
+
+```{r}
+merged_overlap <- bind_rows(
+    read.table('../../processed_data/endo_scramble/scrambles_ttest_increased_merged_tf_overlap10.bed',
+                             header = F, fill = T,
+                             col.names = c('chrom', 'scramble_start_pos', 'scramble_end_pos', 'scrambles',
+                                           'chrom_tf', 'tfbs_left', 'tfbs_right', 'tf_name')) %>% 
+    select(-chrom, -chrom_tf) %>% 
+    mutate(site_type = 'increased'),
+    read.table('../../processed_data/endo_scramble/scrambles_ttest_reduced_merged_tf_overlap10.bed',
+                             header = F, fill = T,
+                             col.names = c('chrom', 'scramble_start_pos', 'scramble_end_pos', 'scrambles',
+                                           'chrom_tf', 'tfbs_left', 'tfbs_right', 'tf_name')) %>% 
+    select(-chrom, -chrom_tf) %>% 
+    mutate(site_type = 'reduced')) %>% 
+    mutate(tf_name = ifelse(tf_name == '.', NA, tf_name)) %>% 
+    distinct()
+
+scramble_merged <- merged_overlap %>% 
+    group_by(scrambles, site_type) %>% 
+    summarise(num_tfbs = sum(!is.na(tf_name))) %>% 
+    select(-site_type) %>% 
+    right_join(scramble_merged, by = 'scrambles') %>% 
+    mutate(site_length = scramble_end_pos - scramble_start_pos) %>% 
+    ungroup()
+```
+
+```{r}
+scramble_merged <- scramble_merged %>% 
+    left_join(select(merged_overlap, -scramble_start_pos, -scramble_end_pos, -site_type), by = 'scrambles') %>% 
+    left_join(select(tf_sites, tfbs_left, tfbs_right, tf_name, tf_effect = expression_effect) %>% distinct(),
+              by = c('tfbs_left', 'tfbs_right', 'tf_name'))
+
+# merged site agrees if any of the component scrambles agreed with TFBS effect
+scramble_merged_parts <- scramble_merged %>% 
+    mutate(scramble_list = strsplit(scrambles, split = ',TSS')) %>% 
+    unnest(scramble_list) %>% 
+    mutate(scramble_part = gsub('TSS', '', scramble_list),
+           scramble_part = paste0('TSS', scramble_part),
+           scramble_part = gsub('TSSneg', 'neg', scramble_part)) %>% 
+    select(-scramble_list) %>% 
+    left_join(select(data, name, tss_name, relative_exp, unscrambled_exp, mean_diff),
+              by = c('scramble_part' = 'name'))
+    
+merged_tf_concordance <- function(scramble_name, tf_effect, scramble_merged_parts) {
+    scramble_parts <- filter(scramble_merged_parts, scrambles == scramble_name)
+
+    if(is.na(tf_effect)) {
+        concordance <- NA
+    }
+    else if (tf_effect == '-') {
+        concordance <- any(scramble_parts$mean_diff > 0)
+    } 
+    else if (tf_effect == '+') {
+        concordance <- any(scramble_parts$mean_diff < 0)
+    }
+    else {
+        concordance <- NA
+    }
+    return(concordance)
+}
+
+scramble_merged <- scramble_merged %>% 
+    distinct(scrambles, tfbs_left, tfbs_right, tf_name, tf_effect) %>% 
+    rowwise() %>% 
+    mutate(tf_concordance = merged_tf_concordance(scrambles, tf_effect, scramble_merged_parts)) %>% 
+    ungroup()
+
+write.table(scramble_merged, "../../processed_data/endo_scramble/scramble_merged_sites.txt",
+            sep = '\t', row.names = F, quote = F)
 ```
 
 

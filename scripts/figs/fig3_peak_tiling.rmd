@@ -171,6 +171,39 @@ Get fasta sequence of merged active tiles
 bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/peak_tile/merged_active_tiles.bed -s -tab -fo ../../processed_data/peak_tile/merged_active_tiles.fasta
 ```
 
+Figure 5F Graph regression predictions
+
+```{r}
+reg_predictions <- read.table('../../processed_data/peak_tile/20190422_peak_tile_hyperparam_tuned_predictions.txt',
+                              col.names = c('sequence', 'predicted', 'observed')) %>% 
+    left_join(select(data_all, sequence = variant, expn_med_fitted_scaled, active), by = 'sequence') %>% 
+    distinct(sequence, observed, .keep_all = T)
+
+active_predictions <- filter(reg_predictions, active == 'active')
+corr_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+inactive_predictions <- filter(reg_predictions, active == 'inactive')
+corr_inactive <- cor.test(inactive_predictions$observed, inactive_predictions$predicted)$estimate
+```
+
+```{r}
+reg_predictions %>% 
+    ggplot(aes(observed, predicted)) + geom_point(alpha = 0.50, aes(color = active)) +
+    geom_smooth(method = 'lm', aes(group = active), color = 'black') +
+    scale_color_manual(values = c('navyblue', 'gray38')) +
+    scale_x_log10(breaks = c(0, 0.01, 0.1, 1, 10, 100)) + 
+    scale_y_log10(breaks = c(0, 0.01, 0.1, 1, 10, 100)) +
+    annotation_logticks() + 
+    annotate('text', x = 45, y = 0.05, label = paste0('r = ', signif(corr_inactive, 1))) +
+    annotate('text', x = 45, y = 0.10, color = 'navyblue',
+             label = paste0('r = ', signif(corr_active, 3))) +
+    labs(x = 'observed expression', y = 'predicted expression',
+         title = '',
+         color = '') +
+    theme(aspect.ratio = 1, legend.position = 'top')
+
+ggsave('../../figs/fig3/peak_tile_regression.pdf', units = 'in', 
+       width = 8, height = 5)
+```
 
 
 
