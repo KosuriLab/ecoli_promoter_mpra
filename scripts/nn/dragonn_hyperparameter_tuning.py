@@ -9,6 +9,7 @@ try:
 except ImportError:
     from sklearn.cross_validation import train_test_split  # sklearn < 0.18
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.metrics import roc_curve, precision_recall_curve
 import sys
 import argparse
 
@@ -166,20 +167,32 @@ if __name__ == '__main__':
 	# save model
 	model.save(prefix)
 
-	# print predictions
+	# predictions
 	predictions = model.predict(X_test)
 
-	# extract sequences for prediction file
-	test_sequences = np.concatenate((
-		encode_trim_pad_fasta_sequences(args.pos_test, 150),
-		encode_trim_pad_fasta_sequences(args.neg_test, 150)))
+	fpr, tpr, thresholds = roc_curve(y_test, predictions)
+	with open(output_name + '_roc_info.txt', 'w') as outfile:
+		for i in range(len(fpr)):
+			outfile.write(str(fpr[i]) + ',' + str(tpr[i]) + ',' + str(thresholds[i]) + '\n')
+
+	precision, recall, thresholds = precision_recall_curve(y_test, predictions)
+#	print(len(precision), len(recall), len(thresholds))
+	with open(output_name + '_pr_info.txt', 'w') as outfile:
+		for i in range(len(thresholds)):
+			outfile.write(str(precision[i]) + ',' + str(recall[i]) + ',' + str(thresholds[i]) + '\n')
+
+
+	# # extract sequences for prediction file
+	# test_sequences = np.concatenate((
+	# 	encode_trim_pad_fasta_sequences(args.pos_test, 150),
+	# 	encode_trim_pad_fasta_sequences(args.neg_test, 150)))
 
 	
-	with open(prefix + '_predictions.txt', 'w') as outfile:
-		for i in range(len(predictions)):
-			outfile.write(
-				test_sequences[i] + '\t' + 
-				str(float(predictions[i])) + '\t' + 
-				str(float(y_test[i])) + '\n')
+	# with open(prefix + '_predictions.txt', 'w') as outfile:
+	# 	for i in range(len(predictions)):
+	# 		outfile.write(
+	# 			test_sequences[i] + '\t' + 
+	# 			str(float(predictions[i])) + '\t' + 
+	# 			str(float(y_test[i])) + '\n')
 
 
