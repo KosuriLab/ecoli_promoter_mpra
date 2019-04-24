@@ -192,7 +192,7 @@ if __name__ == '__main__':
 		for i in range(len(predictions)):
 			outfile.write(
 				test_sequences[i] + '\t' + 
-				str(float(predictions[i])) + '\t' + 
-				str(float(y_test[i])) + '\n')
+				predictions[i] + '\t' + 
+				y_test[i] + '\n')
 
 
