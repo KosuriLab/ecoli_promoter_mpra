@@ -21,7 +21,7 @@ options(scipen = 10000)
 args <- c('../../processed_data/endo_scramble',
           '../../processed_data/endo_scramble/endo_scramble_combined_bc_map.txt',
           '../../processed_data/endo_scramble/endo_scramble_combined_controls_bc_map.txt',
-          '../../processed_data/endo_scramble/endo_scramble_expression_formatted.txt')
+          '../../processed_data/endo_scramble/endo_scramble_expression_formatted_std.txt')
 count_folder <- args[1]
 bc_map_file <- args[2]
 bc_map_file_controls <- args[3]
@@ -290,8 +290,11 @@ scramble_merged <- merged_overlap %>%
 
 ```{r}
 scramble_merged <- scramble_merged %>% 
-    left_join(select(merged_overlap, -scramble_start_pos, -scramble_end_pos, -site_type), by = 'scrambles') %>% 
-    left_join(select(tf_sites, tfbs_left, tfbs_right, tf_name, tf_effect = expression_effect) %>% distinct(),
+    left_join(select(merged_overlap, -scramble_start_pos, 
+                     -scramble_end_pos, -site_type), 
+              by = 'scrambles') %>% 
+    left_join(select(tf_sites, tfbs_left, tfbs_right, tf_name, 
+                     tf_effect = expression_effect) %>% distinct(),
               by = c('tfbs_left', 'tfbs_right', 'tf_name'))
 
 # merged site agrees if any of the component scrambles agreed with TFBS effect
@@ -302,7 +305,7 @@ scramble_merged_parts <- scramble_merged %>%
            scramble_part = paste0('TSS', scramble_part),
            scramble_part = gsub('TSSneg', 'neg', scramble_part)) %>% 
     select(-scramble_list) %>% 
-    left_join(select(data, name, tss_name, relative_exp, unscrambled_exp, mean_diff),
+    left_join(select(data, name, tss_name, relative_exp, unscrambled_exp),
               by = c('scramble_part' = 'name'))
     
 merged_tf_concordance <- function(scramble_name, tf_effect, scramble_merged_parts) {
@@ -324,7 +327,7 @@ merged_tf_concordance <- function(scramble_name, tf_effect, scramble_merged_part
 }
 
 scramble_merged <- scramble_merged %>% 
-    distinct(scrambles, tfbs_left, tfbs_right, tf_name, tf_effect) %>% 
+    distinct(scrambles, tfbs_left, tfbs_right, tf_name, tf_effect, .keep_all = T) %>% 
     rowwise() %>% 
     mutate(tf_concordance = merged_tf_concordance(scrambles, tf_effect, scramble_merged_parts)) %>% 
     ungroup()
