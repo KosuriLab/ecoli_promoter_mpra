@@ -182,17 +182,17 @@ if __name__ == '__main__':
 			outfile.write(str(precision[i]) + ',' + str(recall[i]) + ',' + str(thresholds[i]) + '\n')
 
 
-	# extract sequences for prediction file
-	test_sequences = np.concatenate((
-		encode_trim_pad_fasta_sequences(args.pos_test, 150),
-		encode_trim_pad_fasta_sequences(args.neg_test, 150)))
+	# # extract sequences for prediction file
+	# test_sequences = np.concatenate((
+	# 	encode_trim_pad_fasta_sequences(args.pos_test, 150),
+	# 	encode_trim_pad_fasta_sequences(args.neg_test, 150)))
 
 	
-	with open(prefix + '_predictions.txt', 'w') as outfile:
-		for i in range(len(predictions)):
-			outfile.write(
-				test_sequences[i] + '\t' + 
-				predictions[i] + '\t' + 
-				y_test[i] + '\n')
+	# with open(prefix + '_predictions.txt', 'w') as outfile:
+	# 	for i in range(len(predictions)):
+	# 		outfile.write(
+	# 			test_sequences[i] + '\t' + 
+	# 			predictions[i] + '\t' + 
+	# 			y_test[i] + '\n')
 
 
