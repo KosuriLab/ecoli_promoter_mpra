@@ -174,7 +174,7 @@ bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../pr
 Figure 5E classification predictions
 
 ```{r}
-roc_info <- read.table('../../processed_data/peak_tile/20190423_peak_tile_classifier_hyperparam_tuned_vtwo_roc_info.txt',
+roc_info <- read.table('../../processed_data/peak_tile/20190423_peak_tile_classifier_hyperparam_tuned_roc_info.txt',
                        sep = ',', col.names = c('fpr', 'tpr', 'threshold'))
 
 auc <- pracma::trapz(roc_info$fpr, roc_info$tpr)
@@ -188,7 +188,7 @@ ggsave('../../figs/fig3/peak_tile_roc.pdf', units = 'in', width = 4, height = 4)
 ```
 
 ```{r}
-pr_info <- read.table('../../processed_data/peak_tile/20190423_peak_tile_classifier_hyperparam_tuned_vtwo_pr_info.txt',
+pr_info <- read.table('../../processed_data/peak_tile/20190423_peak_tile_classifier_hyperparam_tuned_pr_info.txt',
                       sep = ',', col.names = c('precision', 'recall', 'threshold'))
 
 
