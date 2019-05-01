@@ -1,0 +1,157 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(cowplot)
+
+options(stringsAsFactors = F)
+options(scipen = 1000)
+```
+
+```{r}
+# write out datasets in formats compatible for modeling
+tss <- read.table('../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted_std.txt',
+                  header = T, sep = '\t')
+
+select(tss, variant, expn_med_fitted_scaled) %>% 
+    write.table('../processed_data/endo_tss/lb/model_files/tss_expression_model_format_values_only.txt',
+                row.names = F, col.names = F, quote = F, sep = '\t')
+
+select(tss, variant, expn_med_fitted_scaled, start, end) %>% 
+    arrange(start) %>% 
+    filter(start > 0) %>% 
+    write.table('../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt',
+                row.names = F, quote = F, sep = '\t')
+
+# write out scramble data for training
+scramble <- read.table('../processed_data/endo_scramble/endo_scramble_expression_formatted_std.txt',
+                       header = T)
+
+scramble %>% 
+    filter(category == 'scramble') %>% 
+    select(variant, expn_med_fitted_scaled) %>% 
+    write.table('../processed_data/endo_scramble/model_files/endo_scramble_expression_model_format_values_only.txt',
+                quote = F, row.names = F, col.names = F, sep = '\t')
+
+scramble %>% 
+    filter(category == 'scramble' | category == 'unscrambled') %>% 
+    select(variant, expn_med_fitted_scaled, start = var_left, end = var_right) %>% 
+    arrange(start) %>% 
+    filter(start > 0) %>% 
+    write.table('../processed_data/endo_scramble/model_files/endo_scramble_expression_model_format.txt',
+                quote = F, row.names = F, sep = '\t')
+```
+
+```
+python nn_predict_from_model.py ../../processed_data/endo_tss/lb/model_files/endo_scramble_expression_model_format_values_only.txt 150 ../../processed_data/peak_tile/model_files/20190422_peak_tile_hyperparam_tuned.arch.json ../../processed_data/peak_tile/model_files/20190422_peak_tile_hyperparam_tuned.weights.h5 ../../processed_data/peak_tile/model_files/20190422_peak_tile_predictions_for_tss.txt
+```
+
+```{r}
+predictions <- read.table('../processed_data/peak_tile/model_files/20190422_peak_tile_predictions_for_tss.txt',
+                          header = T) %>% 
+    mutate(active = ifelse(observed > 1, 'active', 'inactive'))
+
+active_predictions <- filter(predictions, active == 'active')
+corr_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+inactive_predictions <- filter(predictions, active == 'inactive')
+corr_inactive <- cor.test(inactive_predictions$observed, inactive_predictions$predicted)$estimate
+
+ggplot(predictions, aes(observed, predicted)) + 
+    geom_point(alpha = 0.50, aes(color = active)) +
+    scale_color_manual(values = c('navyblue', 'gray38')) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    annotate('text', x = 75, y = 0.25, 
+             label = paste0('r = ', signif(corr_inactive, 3))) +
+    annotate('text', x = 75, y = 0.15, color = 'navyblue',
+             label = paste0('r = ', signif(corr_active, 3))) +
+    labs(title = 'Regression neural network trained on peak tile data and\n predicted on TSS data')
+```
+
+
+```{r}
+tss_predictions <- read.table('../processed_data/endo_scramble/model_files/20190429_scramble_hyperparam_tuned_predictions.txt',
+                              header = F, sep = '\t', col.names = c('sequence', 'predicted', 'observed')) %>% 
+    mutate(active = ifelse(observed > 1, 'active', 'inactive'))
+
+active_predictions <- filter(tss_predictions, active == 'active')
+corr_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+inactive_predictions <- filter(tss_predictions, active == 'inactive')
+corr_inactive <- cor.test(inactive_predictions$observed, inactive_predictions$predicted)$estimate
+
+ggplot(tss_predictions, aes(observed, predicted)) + 
+    geom_point(alpha = 0.50, aes(color = active)) +
+    scale_color_manual(values = c('navyblue', 'gray38')) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    annotate('text', x = 75, y = 0.001, 
+             label = paste0('r = ', signif(corr_inactive, 3))) +
+    annotate('text', x = 75, y = 0.002, color = 'navyblue',
+             label = paste0('r = ', signif(corr_active, 3))) +
+    labs(title = 'Regression neural network trained on scramble data and\n predicted on TSS data (not genome split)')
+```
+
+Split by genome position: Traing on 3/4 of the genomic scrambles and test on remaining
+1/4 genomic TSS.
+
+```
+python define_genome_splits.py 0.75 4639675 ../../processed_data/endo_scramble/model_files/endo_scramble_expression_model_format.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt
+```
+
+```{r}
+tss_split_predictions <- read.table('../processed_data/endo_scramble/model_files/20190430_scramble_genome_split_hyperparam_tuned_predictions.txt',
+                              header = F, sep = '\t', col.names = c('sequence', 'predicted', 'observed')) %>% 
+    mutate(active = ifelse(observed > 1, 'active', 'inactive'))
+
+active_predictions <- filter(tss_split_predictions, active == 'active')
+corr_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+inactive_predictions <- filter(tss_split_predictions, active == 'inactive')
+corr_inactive <- cor.test(inactive_predictions$observed, inactive_predictions$predicted)$estimate
+
+ggplot(tss_split_predictions, aes(observed, predicted)) + 
+    geom_point(alpha = 0.50, aes(color = active)) +
+    scale_color_manual(values = c('navyblue', 'gray38')) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    annotate('text', x = 25, y = 0.01, 
+             label = paste0('r = ', signif(corr_inactive, 3))) +
+    annotate('text', x = 25, y = 0.015, color = 'navyblue',
+             label = paste0('r = ', signif(corr_active, 3))) +
+    labs(title = 'Regression neural network trained on scramble data and\n predicted on TSS data (genome split)')
+```
+
+As expected, performance drops, but I believe the current model split by genome locations is not over-fitting as much.
+
+Modify the training set so it includes scramble and unscrambled. The test set unscrambled are in 
+separate parts of the genome so I believe it's fair to add unscrambled to the train set for the remaining genome.
+
+```{r}
+tss_split_predictions <- read.table('../processed_data/endo_scramble/model_files/20190501_scramble_genome_split_hyperparam_tuned_predictions.txt',
+                              header = F, sep = '\t', col.names = c('sequence', 'predicted', 'observed')) %>% 
+    mutate(active = ifelse(observed > 1, 'active', 'inactive'))
+
+active_predictions <- filter(tss_split_predictions, active == 'active')
+corr_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+inactive_predictions <- filter(tss_split_predictions, active == 'inactive')
+corr_inactive <- cor.test(inactive_predictions$observed, inactive_predictions$predicted)$estimate
+
+ggplot(tss_split_predictions, aes(observed, predicted)) + 
+    geom_point(alpha = 0.50, aes(color = active)) +
+    scale_color_manual(values = c('navyblue', 'gray38')) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    annotate('text', x = 25, y = 0.01, 
+             label = paste0('r = ', signif(corr_inactive, 3))) +
+    annotate('text', x = 25, y = 0.015, color = 'navyblue',
+             label = paste0('r = ', signif(corr_active, 3))) +
+    labs(title = 'Regression neural network trained on scramble+unscramble data and\n predicted on TSS data (genome split)')
+```
+
+The network may be primarily trying to fit the inactive/noisy data since there are way more examples.
+Let's "floor" the data by setting all values less than 1 equal to 1. Hopefully this will encourage the network
+to focus on the active sequences.
+
+```
+python define_genome_splits.py 0.75 4639675 ../../processed_data/endo_scramble/model_files/endo_scramble_expression_model_format.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt --floor
+```

@@ -1,6 +1,7 @@
 import argparse
 import random
 import pandas as pd
+import numpy as np
 from math import floor
 from copy import deepcopy
 
@@ -23,7 +24,7 @@ def create_splits(train_fraction):
 	return splits
 
 
-def find_equidistant_pair(splits):
+def find_equidistant_pair(splits, split1):
 	'''
 	Input: list of tuples corresponding to the start and end of the genome split
 	Output: two splits that are equidistant from the origin. The genome is circular
@@ -40,8 +41,8 @@ def find_equidistant_pair(splits):
 	split_size = splits[0][1] - splits[0][0] + 1
 	remainder = end % split_size
 
-	# randomly choose split
-	split1 = random.choice(splits)
+	# # randomly choose split
+	# split1 = random.choice(splits)
 	# determine distance from origin
 	distance1 = split1[0] - start 
 	# iterate through splits until we find out that is equidistant
@@ -49,7 +50,7 @@ def find_equidistant_pair(splits):
 		split2 = splits[i]
 		distance2 = abs(split2[1] - end + remainder)
 		if distance1 == distance2:
-			return [split1, split2]
+			return split2
 
 	return None
 
@@ -69,14 +70,16 @@ if __name__ == '__main__':
 	parser.add_argument('train_fraction', type=float, help='''Fraction of genomic
 		positions used for training''')
 	parser.add_argument('genome_size', type=int, help='Size of genome (bp)')
-	parser.add_argument('infile_train',  help='''filename of formatted scramble expression data.
-		Must include columns for variant, expn_med_fitted_scaled, var_left, var_right''')
-	parser.add_argument('infile_test', help='''filename of formatted TSS expression data.
+	parser.add_argument('infile_train',  help='''filename of formatted expression data.
 		Must include columns for variant, expn_med_fitted_scaled, start, end''')
-	parser.add_argument('outfile_train', help='''Output name for position split
-		train set. Two-column, tab-separated''')
-	parser.add_argument('outfile_test', help='''Output name for position split
-		test set. Two-column, tab-separated''')
+	parser.add_argument('infile_test', help='''filename of formatted expression data.
+		Must include columns for variant, expn_med_fitted_scaled, start, end''')
+	parser.add_argument('--floor', action='store_true', help='''Flatten all scores below 1 and set to 1.
+		Decreases importance of inactive sequences''')
+	# parser.add_argument('outfile_train', help='''Output name for position split
+	# 	train set. Two-column, tab-separated''')
+	# parser.add_argument('outfile_test', help='''Output name for position split
+	# 	test set. Two-column, tab-separated''')
 	args = parser.parse_args()
 
 	train_fraction = args.train_fraction
@@ -87,7 +90,9 @@ if __name__ == '__main__':
 	# assign test splits so they are equidistant from the origin (coordinate 1, circular)
 	# we created the splits so two splits are equal to the test fraction
 	# we must choose two splits equidistant and assign to test, the rest to train
-	test_splits = find_equidistant_pair(splits)
+	test_split1 = splits[1]
+	test_splits = [test_split1, find_equidistant_pair(splits, test_split1)]
+
 	# create train/test look-up for each split
 	split_lookup = {x : 'test' if x in test_splits else 'train' for x in splits}
 
@@ -95,22 +100,20 @@ if __name__ == '__main__':
 	train = pd.read_table(args.infile_train, sep='\t', header=0)
 	test = pd.read_table(args.infile_test, sep='\t', header=0)
 
-	# sort by genomic position, make sure all positive
-	train.sort_values(by='var_left', inplace=True)
-	test.sort_values(by='start', inplace=True)
-	test = test[test.start > 0]
 
-	# keep relevant categories
-	train = train[(train.category == 'scramble') | (train.category == 'unscrambled')]
-	test = test[test.category == 'tss']
+	if args.floor:
+		# set all train values less than 1 equal to 1. This 
+		# decreases the importance of the inactive/noisy values
+		train['expn_med_fitted_scaled'] = np.where(train['expn_med_fitted_scaled'] < 1, 1, train['expn_med_fitted_scaled'])
+
 
 	# For train, only sequences that fall into train splits will be written
-	with open(args.outfile_train, 'w') as train_outfile:
-	# with open("train_test.txt", 'w') as train_outfile:
-
+	outfile_train = args.infile_train.replace('.txt', '') + '_train_genome_split.txt'
+	with open(outfile_train, 'w') as train_outfile:
 		for i in range(len(train)):
-			x = train.var_left.iloc[i]
-			y = train.var_right.iloc[i]
+			
+			x = train.start.iloc[i]
+			y = train.end.iloc[i]
 			
 			for j in range(len(splits)):
 				if in_range(splits[j], x, y):
@@ -121,11 +124,13 @@ if __name__ == '__main__':
 
 
 	# For test, only sequences that fall into test splits will be written
-	with open(args.outfile_test, 'w') as test_outfile:
-	# with open("test_test.txt", 'w') as test_outfile:
+	outfile_test = args.infile_test.replace('.txt', '') + '_test_genome_split.txt'
+	with open(outfile_test, 'w') as test_outfile:
 		for i in range(len(test)):
+			
 			x = test.start.iloc[i]
 			y = test.end.iloc[i]
+			
 			for j in range(len(splits)):
 				if in_range(splits[j], x, y):
 					if split_lookup[splits[j]] == 'test':
