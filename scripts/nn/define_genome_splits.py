@@ -101,7 +101,7 @@ if __name__ == '__main__':
 	test = test[test.start > 0]
 
 	# keep relevant categories
-	train = train[train.category == 'scramble']
+	train = train[(train.category == 'scramble') | (train.category == 'unscrambled')]
 	test = test[test.category == 'tss']
 
 	# For train, only sequences that fall into train splits will be written
