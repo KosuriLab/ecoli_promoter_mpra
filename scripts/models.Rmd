@@ -45,6 +45,18 @@ scramble %>%
     filter(start > 0) %>% 
     write.table('../processed_data/endo_scramble/model_files/endo_scramble_expression_model_format.txt',
                 quote = F, row.names = F, sep = '\t')
+
+peak_tile <- read.table('../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
+                        header = T, sep = '\t') %>% 
+    mutate(start = peak_start + tile_start,
+           end = peak_start + tile_end)
+
+peak_tile %>% 
+    filter(category == 'tile') %>% 
+    arrange(start) %>% 
+    select(variant, expn_med_fitted_scaled, start, end) %>% 
+    write.table('../processed_data/peak_tile/model_files/peak_tile_expression_model_format.txt',
+                quote = F, row.names = F, sep = '\t')
 ```
 
 ```
@@ -57,18 +69,18 @@ predictions <- read.table('../processed_data/peak_tile/model_files/20190422_peak
     mutate(active = ifelse(observed > 1, 'active', 'inactive'))
 
 active_predictions <- filter(predictions, active == 'active')
-corr_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
-inactive_predictions <- filter(predictions, active == 'inactive')
-corr_inactive <- cor.test(inactive_predictions$observed, inactive_predictions$predicted)$estimate
+pearson_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+spearman_active <- cor.test(active_predictions$observed, active_predictions$predicted,
+                           method = 'spearman')$estimate
 
 ggplot(predictions, aes(observed, predicted)) + 
     geom_point(alpha = 0.50, aes(color = active)) +
     scale_color_manual(values = c('navyblue', 'gray38')) +
     scale_x_log10() + scale_y_log10() + annotation_logticks() +
-    annotate('text', x = 75, y = 0.25, 
-             label = paste0('r = ', signif(corr_inactive, 3))) +
+    annotate('text', x = 75, y = 0.25, color = 'navyblue',
+             label = paste0('r = ', signif(pearson_active, 3))) +
     annotate('text', x = 75, y = 0.15, color = 'navyblue',
-             label = paste0('r = ', signif(corr_active, 3))) +
+             label = paste0('rho = ', signif(spearman_active, 3))) +
     labs(title = 'Regression neural network trained on peak tile data and\n predicted on TSS data')
 ```
 
@@ -79,18 +91,18 @@ tss_predictions <- read.table('../processed_data/endo_scramble/model_files/20190
     mutate(active = ifelse(observed > 1, 'active', 'inactive'))
 
 active_predictions <- filter(tss_predictions, active == 'active')
-corr_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
-inactive_predictions <- filter(tss_predictions, active == 'inactive')
-corr_inactive <- cor.test(inactive_predictions$observed, inactive_predictions$predicted)$estimate
+pearson_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+spearman_active <- cor.test(active_predictions$observed, active_predictions$predicted,
+                           method = 'spearman')$estimate
 
 ggplot(tss_predictions, aes(observed, predicted)) + 
     geom_point(alpha = 0.50, aes(color = active)) +
     scale_color_manual(values = c('navyblue', 'gray38')) +
     scale_x_log10() + scale_y_log10() + annotation_logticks() +
-    annotate('text', x = 75, y = 0.001, 
-             label = paste0('r = ', signif(corr_inactive, 3))) +
     annotate('text', x = 75, y = 0.002, color = 'navyblue',
-             label = paste0('r = ', signif(corr_active, 3))) +
+             label = paste0('r = ', signif(pearson_active, 3))) +
+    annotate('text', x = 75, y = 0.001, color = 'navyblue',
+             label = paste0('rho = ', signif(spearman_active, 3))) +
     labs(title = 'Regression neural network trained on scramble data and\n predicted on TSS data (not genome split)')
 ```
 
@@ -107,18 +119,18 @@ tss_split_predictions <- read.table('../processed_data/endo_scramble/model_files
     mutate(active = ifelse(observed > 1, 'active', 'inactive'))
 
 active_predictions <- filter(tss_split_predictions, active == 'active')
-corr_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
-inactive_predictions <- filter(tss_split_predictions, active == 'inactive')
-corr_inactive <- cor.test(inactive_predictions$observed, inactive_predictions$predicted)$estimate
+pearson_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+spearman_active <- cor.test(active_predictions$observed, active_predictions$predicted,
+                           method = 'spearman')$estimate
 
 ggplot(tss_split_predictions, aes(observed, predicted)) + 
     geom_point(alpha = 0.50, aes(color = active)) +
     scale_color_manual(values = c('navyblue', 'gray38')) +
     scale_x_log10() + scale_y_log10() + annotation_logticks() +
-    annotate('text', x = 25, y = 0.01, 
-             label = paste0('r = ', signif(corr_inactive, 3))) +
-    annotate('text', x = 25, y = 0.015, color = 'navyblue',
-             label = paste0('r = ', signif(corr_active, 3))) +
+    annotate('text', x = 75, y = 0.02, color = 'navyblue',
+             label = paste0('r = ', signif(pearson_active, 3))) +
+    annotate('text', x = 75, y = 0.01, color = 'navyblue',
+             label = paste0('rho = ', signif(spearman_active, 3))) +
     labs(title = 'Regression neural network trained on scramble data and\n predicted on TSS data (genome split)')
 ```
 
@@ -133,18 +145,18 @@ tss_split_predictions <- read.table('../processed_data/endo_scramble/model_files
     mutate(active = ifelse(observed > 1, 'active', 'inactive'))
 
 active_predictions <- filter(tss_split_predictions, active == 'active')
-corr_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
-inactive_predictions <- filter(tss_split_predictions, active == 'inactive')
-corr_inactive <- cor.test(inactive_predictions$observed, inactive_predictions$predicted)$estimate
+pearson_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+spearman_active <- cor.test(active_predictions$observed, active_predictions$predicted,
+                           method = 'spearman')$estimate
 
 ggplot(tss_split_predictions, aes(observed, predicted)) + 
     geom_point(alpha = 0.50, aes(color = active)) +
     scale_color_manual(values = c('navyblue', 'gray38')) +
     scale_x_log10() + scale_y_log10() + annotation_logticks() +
-    annotate('text', x = 25, y = 0.01, 
-             label = paste0('r = ', signif(corr_inactive, 3))) +
-    annotate('text', x = 25, y = 0.015, color = 'navyblue',
-             label = paste0('r = ', signif(corr_active, 3))) +
+    annotate('text', x = 75, y = 0.0025, color = 'navyblue',
+             label = paste0('r = ', signif(pearson_active, 3))) +
+    annotate('text', x = 75, y = 0.0015, color = 'navyblue',
+             label = paste0('rho = ', signif(spearman_active, 3))) +
     labs(title = 'Regression neural network trained on scramble+unscramble data and\n predicted on TSS data (genome split)')
 ```
 
@@ -154,4 +166,37 @@ to focus on the active sequences.
 
 ```
 python define_genome_splits.py 0.75 4639675 ../../processed_data/endo_scramble/model_files/endo_scramble_expression_model_format.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt --floor
+
+python dragonn_hyperparameter_tuning_regression.py ../../processed_data/endo_scramble/model_files/endo_scramble_expression_model_format_train_genome_split.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format_test_genome_split.txt 150 4 5 100 0.2 100 ../../processed_data/endo_scramble/model_files/20190501_scramble_floor_hyperparam_tuned > ../../processed_data/endo_scramble/model_files/20190501_scramble_floor_hyperparam_tuned.log
+```
+
+
+```{r}
+tss_floor_predictions <- read.table('../processed_data/endo_scramble/model_files/20190501_scramble_floor_hyperparam_tuned_predictions.txt',
+                              header = F, sep = '\t', col.names = c('sequence', 'predicted', 'observed')) %>% 
+    mutate(active = ifelse(observed > 1, 'active', 'inactive'))
+
+active_predictions <- filter(tss_floor_predictions, active == 'active')
+pearson_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+spearman_active <- cor.test(active_predictions$observed, active_predictions$predicted,
+                           method = 'spearman')$estimate
+
+ggplot(tss_floor_predictions, aes(observed, predicted)) + 
+    geom_point(alpha = 0.50, aes(color = active)) +
+    scale_color_manual(values = c('navyblue', 'gray38')) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    annotate('text', x = 75, y = 0.25, color = 'navyblue',
+             label = paste0('r = ', signif(pearson_active, 3))) +
+    annotate('text', x = 75, y = 0.15, color = 'navyblue',
+             label = paste0('rho = ', signif(spearman_active, 3))) +
+    labs(title = 'Regression neural network trained on scramble+unscramble data and\n predicted on TSS data (floored data)')
+```
+
+Let's try genome splits for the peak tile data.
+
+```
+
+python define_genome_splits.py 0.75 4639675 ../../processed_data/peak_tile/model_files/peak_tile_expression_model_format.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt --floor
+
+python dragonn_hyperparameter_tuning_regression.py ../../processed_data/peak_tile/model_files/peak_tile_expression_model_format_train_genome_split.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format_test_genome_split.txt 150 4 5 100 0.2 100 ../../processed_data/peak_tile/model_files/20190501_peak_tile_split_hyperparam_tuned > ../../processed_data/peak_tile/model_files/20190501_peak_tile_split_hyperparam_tuned.log
 ```
