@@ -1,0 +1,241 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(cowplot)
+library(reshape2)
+library(gplots)
+library(tidyr)
+library(viridis)
+library(matrixStats)
+library(sqldf)
+
+endo_scramble <-  read.table('../../processed_data/endo_scramble/endo_scramble_expression_formatted_std.txt', header = T)
+```
+
+
+
+
+```{r echo=FALSE}
+endo_scramble  <- endo_scramble  %>% 
+    mutate(name = gsub('_flipped', '', name),
+           name = gsub('_rc', '', name))
+
+endo_scramble <- endo_scramble %>% 
+    mutate(category = case_when(grepl('unscrambled', .$name) ~ 'unscramble',
+                                grepl('neg', .$name) ~ 'negative',
+                                TRUE ~ 'scramble'))
+
+table(endo_scramble$category)
+neg_median <- median(negatives$expn_med_fitted_scaled, na.rm = T)
+neg_mad <- mad(negatives$expn_med_fitted_scaled, na.rm = T)
+threshold <- neg_median + 3*neg_mad
+
+
+data <- filter(endo_scramble, category != 'negative')
+
+
+tss_data <- data %>% 
+    separate(name, into = c('tss_name', 'tss_position', 'strand_scramble_loc'), sep = ',',
+             convert = T, remove = F) %>% 
+    separate(strand_scramble_loc, into = c('strand', 'scramble_loc'), sep = '_') %>% 
+    mutate(scramble_loc = gsub('unscrambled', NA, scramble_loc),
+           scramble_loc = gsub('scrambled', '', scramble_loc)) %>% 
+    separate(scramble_loc, into = c('scramble_start', 'scramble_end'),
+             sep = '-', convert = T) %>%
+    group_by(tss_name) %>% 
+    mutate(unscrambled_exp = ifelse(any(category == 'unscramble'),
+                                 expn_med_fitted_scaled[category == 'unscramble'],
+                                 NA), relative_exp = log2(expn_med_fitted_scaled / unscrambled_exp)) %>%
+      mutate(active = ifelse(expn_med_fitted_scaled >= threshold, 'active', 'inactive'))
+
+
+```
+
+
+Figure4B - Overall Promoter Profiles
+
+
+```{r}
+tss_data <- filter(endo_scramble, category != 'neg_control')
+
+test_cast <- tss_data %>% arrange(desc(unscrambled_exp)) %>%
+  select('tss_name', 'scramble_start', 'relative_exp') %>%
+  group_by(tss_name) %>% 
+  mutate(num_variants = n()) %>%
+  filter(num_variants > 20) %>% 
+  select(-num_variants) %>% mutate(scramble_start = scramble_start-120) %>%
+  dcast(., tss_name+relative_exp~scramble_start) %>%
+  select(-relative_exp, -NA) %>%
+  group_by(tss_name) %>%
+  summarise_all(funs(sum(., na.rm = T))) %>%
+  ungroup() %>% 
+  select(-'NA', -tss_name) %>%
+  distinct()
+
+
+num_promoters <- nrow(test_cast)
+
+colors <- rev(viridis(100)) %>% head(90)
+par(mar=c(5, 4, 4, 10)+0.1)
+test_cast %>% as.matrix() %>%
+    heatmap.2(.,
+          col=colors,
+          Colv=NA,
+          xlab = "Scramble Position",
+          ylab = paste("Promoters \n (n = ",num_promoters,")"),
+          key=T, keysize=1.0,
+          scale="row",
+          density.info="none",
+          reorderfun=function(d,w) reorder(d, w, agglo.FUN=mean),
+          trace="none",
+          dendrogram = "none",
+          cexRow=0.2,
+          cexCol=0.8,
+          labRow = FALSE,
+          na.color = 'grey80',
+          key.ylab = NULL,
+          distfun=function(x) dist(x, method="euclidean"),
+          hclustfun=function(x) hclust(x, method="ward.D2"))
+
+#Note: this figure is flipped in illustrator
+ggsave('../../figs/fig4/scramble_heatmap.pdf', units = 'in',
+       width = 10, height = 8)
+```
+
+
+4C - Single promoter examples
+```{r}
+
+#PlacZ
+tss_data %>% 
+    filter(tss_name == 'TSS_1459_storz_regulondb') %>%
+    mutate(scramble_start = (scramble_start-120),
+           relative_exp = relative_exp,
+           Type = ifelse(2^relative_exp > 1, 'Repressing', 'Activating')) %>% 
+    ggplot(aes(scramble_start, 2^relative_exp)) +
+    geom_vline(xintercept = c(0,-20,-40,-60,-80,-100, -120), linetype="dashed", alpha=.6) +
+    geom_bar(aes(fill=Type),stat="identity", color = 'black', alpha = .8) +
+    scale_fill_manual(values = c("#ffd700", "#000066")) +
+    geom_hline(yintercept = 1) + annotation_logticks(sides="l") +
+    scale_y_log10(limits=c(.1,10)) +
+    labs(x = 'Scramble Starting Position', y= 'Relative Expression to WT', color = '', title = "Mutational scanning across PlacZ") +
+    theme(axis.text.x = element_text(size=24), 
+        axis.text.y = element_text(size=24),
+        axis.title.x.bottom = element_text(size = 24),
+        axis.title.y.left = element_text(size = 24))
+
+ggsave('../../figs/fig4/placz.pdf', units = 'in', width = 8, height = 4.5)
+```
+
+
+```{r}
+#relBE
+tss_data %>% 
+    filter(tss_name == 'TSS_6296_wanner') %>%
+    mutate(scramble_start = (scramble_start-120),
+           relative_exp = relative_exp,
+           Type = ifelse(2^relative_exp > 1, 'Repressing', 'Activating')) %>% 
+    ggplot(aes(scramble_start, 2^relative_exp)) +
+    geom_vline(xintercept = c(0,-20,-40,-60,-80,-100, -120), linetype="dashed", alpha=.6) +
+    geom_bar(aes(fill=Type),stat="identity", color = 'black', alpha = .8) +
+    scale_fill_manual(values = c("#ffd700", "#000066")) +
+    geom_hline(yintercept = 1) + annotation_logticks(sides="l") +
+    scale_y_log10(limits=c(.2,10)) +
+    labs(x = 'Scramble Starting Position', y= 'Relative Expression to WT', color = '', title = "Mutational scanning across PrelBE") +
+    theme(axis.text.x = element_text(size=24), 
+        axis.text.y = element_text(size=24),
+        axis.title.x.bottom = element_text(size = 24),
+        axis.title.y.left = element_text(size = 24))
+
+ggsave('../../figs/fig4/relbe.pdf', units = 'in', width = 8, height = 4.5)
+```
+
+Figure 4D - Uncharacterized promoter Dissection
+```{r}
+#TSS_13441_storz_wanner, rpsL ribosomal subunit S12 https://biocyc.org/gene?orgid=ECOLI&id=EG10911
+
+tss_data %>% 
+    filter(tss_name == 'TSS_13441_storz_wanner') %>%
+    mutate(scramble_start = (scramble_start-120),
+           relative_exp = relative_exp,
+           Type = ifelse(2^relative_exp > 1, 'Repressing', 'Activating')) %>% 
+    ggplot(aes(scramble_start, 2^relative_exp)) +
+    geom_vline(xintercept = c(0,-20,-40,-60,-80,-100, -120), linetype="dashed", alpha=.6) +
+    geom_bar(aes(fill=Type),stat="identity", color = 'black', alpha = .8) +
+    scale_fill_manual(values = c("#ffd700", "#000066")) +
+    geom_hline(yintercept = 1) + annotation_logticks(sides="l") +
+    scale_y_log10(limits=c(.05,10)) +
+    labs(x = 'Scramble Starting Position', y= 'Relative Expression to WT', color = '', title = "Mutational scanning across PrpsL") +
+      theme(axis.text.x = element_text(size=24), 
+        axis.text.y = element_text(size=24),
+        axis.title.x.bottom = element_text(size = 24),
+        axis.title.y.left = element_text(size = 24))
+
+ggsave('../../figs/fig4/rpsL_novelRegulation.pdf', units = 'in',
+      height = 4.5, width = 8)
+```
+
+
+```{r}
+#,  cyclopropane fatty acyl phospholipid synthase https://biocyc.org/gene?orgid=ECOLI&id=EG11531
+tss_data %>% 
+    filter(tss_name == 'TSS_6672_regulondb') %>%
+    mutate(scramble_start = (scramble_start-120),
+           relative_exp = relative_exp,
+           Type = ifelse(2^relative_exp > 1, 'Repressing', 'Activating')) %>% 
+    ggplot(aes(scramble_start, 2^relative_exp)) +
+    geom_vline(xintercept = c(0,-20,-40,-60,-80,-100, -120), linetype="dashed", alpha=.6) +
+    geom_bar(aes(fill=Type),stat="identity", color = 'black', alpha = .8) +
+    scale_fill_manual(values = c("#ffd700", "#000066")) +
+    geom_hline(yintercept = 1) + annotation_logticks(sides="l") +
+    scale_y_log10(limits=c(.05,10)) +
+    labs(x = 'Scramble Starting Position', y= 'Relative Expression to WT', color = '', title = "Mutational scanning across Pcfa") +
+      theme(axis.text.x = element_text(size=24), 
+        axis.text.y = element_text(size=24),
+        axis.title.x.bottom = element_text(size = 24),
+        axis.title.y.left = element_text(size = 24))
+
+ggsave('../../figs/fig4/cfa_novelRegulation.pdf', units = 'in',
+      height = 4.5, width = 8)
+```
+
+```{r}
+# 
+## PGarD
+# tss_data %>% 
+#     filter(tss_name == 'TSS_12405_storz') %>%
+#     mutate(scramble_start = (scramble_start-120),
+#            relative_exp = relative_exp,
+#            Type = ifelse(2^relative_exp > 1, 'Repressing', 'Activating')) %>% 
+#     ggplot(aes(scramble_start, 2^relative_exp)) +
+#     geom_vline(xintercept = c(0,-20,-40,-60,-80,-100, -120), linetype="dashed", alpha=.6) +
+#     geom_bar(aes(fill=Type),stat="identity", color = 'black', alpha = .8) +
+#     scale_fill_manual(values = c("#ffd700", "#000066")) +
+#     geom_hline(yintercept = 1) + annotation_logticks(sides="l") +
+#     scale_y_log10(limits=c(.2,5)) +
+#     labs(x = 'Scramble Position', y= 'Relative Expression to WT', color = '', title = "Mutational scanning across PGarD")
+# 
+# 
+##ParnB
+# tss_data %>% 
+#     filter(tss_name == 'TSS_8927_wanner') %>%
+#     mutate(scramble_start = (scramble_start-120),
+#            relative_exp = relative_exp,
+#            Type = ifelse(2^relative_exp > 1, 'Repressing', 'Activating')) %>% 
+#     ggplot(aes(scramble_start, 2^relative_exp)) +
+#     geom_vline(xintercept = c(0,-20,-40,-60,-80,-100, -120), linetype="dashed", alpha=.6) +
+#     geom_bar(aes(fill=Type),stat="identity", color = 'black', alpha = .8) +
+#     scale_fill_manual(values = c("#ffd700", "#000066")) +
+#     geom_hline(yintercept = 1) + annotation_logticks(sides="l") +
+#     scale_y_log10(limits=c(.2,5)) +
+#   labs(x = 'Scramble Position', y= 'Relative Expression to WT', color = '', title = "Mutational scanning across arnB")
+
+```
+
+
+
