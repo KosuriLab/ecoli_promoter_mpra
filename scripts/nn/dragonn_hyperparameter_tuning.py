@@ -136,8 +136,8 @@ if __name__ == '__main__':
 	
 	print('Starting hyperparameter search...')
 
-	min_conv_width = 15
-	max_conv_width = 20
+	min_conv_width = 6
+	max_conv_width = 30
 	min_dropout = 0.1
 	max_dropout = 0.9
 
