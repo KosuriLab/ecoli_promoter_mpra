@@ -76,6 +76,8 @@ if __name__ == '__main__':
 		Must include columns for variant, expn_med_fitted_scaled, start, end''')
 	parser.add_argument('--floor', action='store_true', help='''Flatten all scores below 1 and set to 1.
 		Decreases importance of inactive sequences''')
+	parser.add_argument('--validation', action='store_true', 
+		help='''Whether to output separate validation split''')
 	# parser.add_argument('outfile_train', help='''Output name for position split
 	# 	train set. Two-column, tab-separated''')
 	# parser.add_argument('outfile_test', help='''Output name for position split
@@ -86,6 +88,7 @@ if __name__ == '__main__':
 	genome_size = args.genome_size
 
 	splits = create_splits(train_fraction)	
+
 
 	# assign test splits so they are equidistant from the origin (coordinate 1, circular)
 	# we created the splits so two splits are equal to the test fraction
@@ -106,10 +109,11 @@ if __name__ == '__main__':
 		# decreases the importance of the inactive/noisy values
 		train['expn_med_fitted_scaled'] = np.where(train['expn_med_fitted_scaled'] < 1, 1, train['expn_med_fitted_scaled'])
 
-
+	
 	# For train, only sequences that fall into train splits will be written
-	outfile_train = args.infile_train.replace('.txt', '') + '_train_genome_split.txt'
-	with open(outfile_train, 'w') as train_outfile:
+	outfile_train_name = args.infile_train.replace('.txt', '') + '_train_genome_split.txt'
+	print outfile_train_name
+	with open(outfile_train_name, 'w') as outfile_train:
 		for i in range(len(train)):
 			
 			x = train.start.iloc[i]
@@ -118,25 +122,46 @@ if __name__ == '__main__':
 			for j in range(len(splits)):
 				if in_range(splits[j], x, y):
 					if split_lookup[splits[j]] == 'train':
-						train_outfile.write(train.variant.iloc[i] + '\t')
-						train_outfile.write(str(train.expn_med_fitted_scaled.iloc[i]) + '\n')
+						outfile_train.write(train.variant.iloc[i] + '\t')
+						outfile_train.write(str(train.expn_med_fitted_scaled.iloc[i]) + '\n')
+						
 					# else, don't write to output
 
+	# output pre-defined validation split, use one of test
+	if args.validation:
+		validation_split = test_splits[1]
+		test_split = test_splits[0]
 
-	# For test, only sequences that fall into test splits will be written
-	outfile_test = args.infile_test.replace('.txt', '') + '_test_genome_split.txt'
-	with open(outfile_test, 'w') as test_outfile:
+		outfile_test = open(args.infile_test.replace('.txt', '') + '_test_genome_split.txt', 'w')
+		outfile_val = open(args.infile_test.replace('.txt', '') + '_validation_genome_split.txt', 'w')
+
 		for i in range(len(test)):
-			
+
 			x = test.start.iloc[i]
 			y = test.end.iloc[i]
-			
-			for j in range(len(splits)):
-				if in_range(splits[j], x, y):
-					if split_lookup[splits[j]] == 'test':
-						test_outfile.write(test.variant.iloc[i] + '\t')
-						test_outfile.write(str(test.expn_med_fitted_scaled.iloc[i]) + '\n')
-					# else, don't write to output
+
+			if in_range(test_split, x, y):
+				outfile_test.write(test.variant.iloc[i] + '\t')
+				outfile_test.write(str(test.expn_med_fitted_scaled.iloc[i]) + '\n')
+			elif in_range(validation_split, x, y):
+				outfile_val.write(test.variant.iloc[i] + '\t')
+				outfile_val.write(str(test.expn_med_fitted_scaled.iloc[i]) + '\n')
+
+	else:
+		# For test, only sequences that fall into test splits will be written
+		outfile_test_name = args.infile_test.replace('.txt', '') + '_test_genome_split.txt'
+		with open(outfile_test_name, 'w') as outfile_test:
+			for i in range(len(test)):
+				
+				x = test.start.iloc[i]
+				y = test.end.iloc[i]
+				
+				for j in range(len(splits)):
+					if in_range(splits[j], x, y):
+						if split_lookup[splits[j]] == 'test':
+							outfile_test.write(test.variant.iloc[i] + '\t')
+							outfile_test.write(str(test.expn_med_fitted_scaled.iloc[i]) + '\n')
+						# else, don't write to output
 
 
 
