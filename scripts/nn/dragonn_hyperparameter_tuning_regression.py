@@ -79,6 +79,7 @@ if __name__ == '__main__':
 	parser.add_argument('num_trials', type=int, 
 		help='number of hyperparameter trials')
 	parser.add_argument('prefix', help='output prefix for saved model files')
+	parser.add_argument('--validation', help='Optional pre-defined validation set')
 	
 	args = parser.parse_args()
 
@@ -97,10 +98,12 @@ if __name__ == '__main__':
 	num_hyperparameter_trials = args.num_trials
 	prefix = args.prefix
 
-
-	# split training into validation set
-	X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train, 
-		test_size=validation_fraction)
+	if args.validation:
+		X_valid, y_valid = process_seqs(args.validation, seq_length)
+	else:
+		# split training into validation set
+		X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train, 
+			test_size=validation_fraction)
 
 
 	print('Starting hyperparameter search...')
