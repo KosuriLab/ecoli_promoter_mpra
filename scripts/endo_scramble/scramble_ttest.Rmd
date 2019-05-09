@@ -279,13 +279,13 @@ merged_overlap <- bind_rows(
     mutate(tf_name = ifelse(tf_name == '.', NA, tf_name)) %>% 
     distinct()
 
-scramble_merged <- merged_overlap %>% 
-    group_by(scrambles, site_type) %>% 
-    summarise(num_tfbs = sum(!is.na(tf_name))) %>% 
-    select(-site_type) %>% 
-    right_join(scramble_merged, by = 'scrambles') %>% 
-    mutate(site_length = scramble_end_pos - scramble_start_pos) %>% 
-    ungroup()
+# scramble_merged <- merged_overlap %>% 
+#     group_by(scrambles, site_type) %>% 
+#     summarise(num_tfbs = sum(!is.na(tf_name))) %>% 
+#     select(-site_type) %>% 
+#     right_join(scramble_merged, by = 'scrambles') %>% 
+#     mutate(site_length = scramble_end_pos - scramble_start_pos) %>% 
+#     ungroup()
 ```
 
 ```{r}
@@ -308,17 +308,17 @@ scramble_merged_parts <- scramble_merged %>%
     left_join(select(data, name, tss_name, relative_exp, unscrambled_exp),
               by = c('scramble_part' = 'name'))
     
-merged_tf_concordance <- function(scramble_name, tf_effect, scramble_merged_parts) {
+merged_tf_concordance <- function(scramble_name, tf_effect, scramble_parts) {
     scramble_parts <- filter(scramble_merged_parts, scrambles == scramble_name)
 
     if(is.na(tf_effect)) {
         concordance <- NA
     }
     else if (tf_effect == '-') {
-        concordance <- any(scramble_parts$mean_diff > 0)
+        concordance <- any(scramble_parts$mean_group_diff > 0)
     } 
     else if (tf_effect == '+') {
-        concordance <- any(scramble_parts$mean_diff < 0)
+        concordance <- any(scramble_parts$mean_group_diff < 0)
     }
     else {
         concordance <- NA
