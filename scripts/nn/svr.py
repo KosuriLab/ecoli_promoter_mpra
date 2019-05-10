@@ -2,7 +2,7 @@
 import numpy as np, random
 np.random.seed(1)
 random.seed(1)
-from keras_regression import SequenceDNN
+from keras_regression import SequenceDNN, SVR
 from hyperparameter_search_regression import HyperparameterSearcher, RandomSearch
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 try:
@@ -11,7 +11,7 @@ except ImportError:
     from sklearn.cross_validation import train_test_split  # sklearn < 0.18
 import sys
 import argparse
-
+import time
 
 num_epochs = 100
 
@@ -83,16 +83,20 @@ if __name__ == '__main__':
 	# load in pre-defined splits
 	seq_length = args.seq_length
 	print("loading training set...")
-	X, y = process_seqs(args.train, seq_length, '2d')
+	X, y = process_seqs(args.data, seq_length, '2d')
 
-	model = keras_regression.SVR()
+	model = SVR()
 	print("Training SVR...")
 	start_time = time.time()
 	model.train(X, y)
 	elapsed_time = time.time() - start_time
 	print(elapsed_time)
-	print "Score:"
-	model.score(X, y)
+	predictions = model.predict(X)
+	with open('svr_predictions.txt', 'w') as outfile:
+		for i in range(len(predictions)):
+			outfile.write(str(float(predictions[i])) + '\t' +
+				      str(float(y_test[i])) + '\n')
+	score = np.corrcoef(np.squeeze(predictions), y)[0,1]
 	
 
 
