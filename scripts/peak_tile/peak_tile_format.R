@@ -5,7 +5,7 @@ library(dplyr)
 library(tidyr)
 
 data <- read.table('../../processed_data/peak_tile/peak_tile_expression.txt', header = T) %>% 
-    select(variant, name = orig_name, RNA_exp_sum_1_1:expn_med)
+    select(variant, name = orig_name, RNA_exp_sum_1_1:num_barcodes_integrated)
 
 data  <- data  %>% 
     mutate(name = gsub('_flipped', '', name),
