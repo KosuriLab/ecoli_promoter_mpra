@@ -95,7 +95,7 @@ if __name__ == '__main__':
 	with open('svr_predictions.txt', 'w') as outfile:
 		for i in range(len(predictions)):
 			outfile.write(str(float(predictions[i])) + '\t' +
-				      str(float(y_test[i])) + '\n')
+				      str(float(y[i])) + '\n')
 	score = np.corrcoef(np.squeeze(predictions), y)[0,1]
 	
 

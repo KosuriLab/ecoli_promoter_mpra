@@ -348,7 +348,7 @@ class SVR(Model):
         self.regressor.fit(X, y)
 
     def predict(self, X):
-        return self.regressor.predict(X)[:, 1:]
+        return self.regressor.predict(X)
 
 
 class DecisionTree(Model):
