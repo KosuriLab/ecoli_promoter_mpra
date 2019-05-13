@@ -75,27 +75,34 @@ def process_seqs(filename, seq_length, encode_type='1d'):
 if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
-	parser.add_argument('data', help='''Training set, one column sequence, 
+	# parser.add_argument('data', help='''Training set, one column sequence, 
+	# 	one column expression. Tab-separated''')
+	parser.add_argument('train', help='''Training set, one column sequence, 
+		one column expression. Tab-separated''')
+	parser.add_argument('test', help='''Test sest, one column sequence, 
 		one column expression. Tab-separated''')
 	parser.add_argument('seq_length', type=int, help='length of input sequences')
 	args = parser.parse_args()
 
 	# load in pre-defined splits
 	seq_length = args.seq_length
-	print("loading training set...")
-	X, y = process_seqs(args.data, seq_length, '2d')
+	# print("loading training set...")
+	# X, y = process_seqs(args.data, seq_length, '2d')
+	print("loading training and test set...")
+	X_train, y_train = process_seqs(args.train, seq_length, '2d')
+	X_test, y_test = process_seqs(args.test, seq_length, '2d')
 
 	model = SVR()
 	print("Training SVR...")
 	start_time = time.time()
-	model.train(X, y)
+	model.train(X_train, y_train)
 	elapsed_time = time.time() - start_time
 	print(elapsed_time)
-	predictions = model.predict(X)
+	predictions = model.predict(X_test)
 	with open('svr_predictions.txt', 'w') as outfile:
 		for i in range(len(predictions)):
 			outfile.write(str(float(predictions[i])) + '\t' +
-				      str(float(y[i])) + '\n')
+				      str(float(y_test[i])) + '\n')
 	score = np.corrcoef(np.squeeze(predictions), y)[0,1]
 	
 
