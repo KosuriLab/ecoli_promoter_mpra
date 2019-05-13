@@ -97,6 +97,6 @@ if __name__ == '__main__':
 			outfile.write(str(float(predictions[i])) + '\t' +
 				      str(float(y_test[i])) + '\n')
 
-	score = model.score(X_test)
+	score = model.score(X_test, y_test)
 	print("Score:", score)
 
