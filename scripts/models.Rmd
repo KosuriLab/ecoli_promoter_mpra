@@ -160,6 +160,15 @@ ggplot(tss_split_predictions, aes(observed, predicted)) +
     labs(title = 'Regression neural network trained on scramble+unscramble data and\n predicted on TSS data (genome split)')
 ```
 
+
+```{r}
+library(PRROC)
+prc <- pr.curve(scores.class0 = tss_split_predictions$predicted[tss_split_predictions$observed > 1],
+                scores.class1 = tss_split_predictions$predicted[tss_split_predictions$observed < 1],
+                curve = T)
+plot(prc)
+```
+
 The network may be primarily trying to fit the inactive/noisy data since there are way more examples.
 Let's "floor" the data by setting all values less than 1 equal to 1. Hopefully this will encourage the network
 to focus on the active sequences.
@@ -192,6 +201,13 @@ ggplot(tss_floor_predictions, aes(observed, predicted)) +
     labs(title = 'Regression neural network trained on scramble+unscramble data and\n predicted on TSS data (floored data)')
 ```
 
+```{r}
+prc <- pr.curve(scores.class0 = tss_floor_predictions$predicted[tss_floor_predictions$observed > 1],
+                scores.class1 = tss_floor_predictions$predicted[tss_floor_predictions$observed < 1],
+                curve = T)
+plot(prc)
+```
+
 Let's try genome splits for the peak tile data.
 
 ```
@@ -200,3 +216,67 @@ python define_genome_splits.py 0.75 4639675 ../../processed_data/peak_tile/model
 
 python dragonn_hyperparameter_tuning_regression.py ../../processed_data/peak_tile/model_files/peak_tile_expression_model_format_train_genome_split.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format_test_genome_split.txt 150 4 5 100 0.2 100 ../../processed_data/peak_tile/model_files/20190501_peak_tile_split_hyperparam_tuned > ../../processed_data/peak_tile/model_files/20190501_peak_tile_split_hyperparam_tuned.log
 ```
+
+Train on both scramble and peak tile
+
+```
+python dragonn_hyperparameter_tuning_regression.py ../../processed_data/endo_scramble/model_files/scramble_peak_tile_expression_model_format_train_genome_split.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format_test_genome_split.txt 150 4 50 100 0.2 100 ../../processed_data/endo_scramble/model_files/20190506_scramble_peak_tile_predefine_valid_split_hyperparam_tuned --validation ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format_validation_genome_split.txt > ../../processed_data/endo_scramble/model_files/20190508_scramble_peak_tile_predefined_valid_split_hyperparam_tuned.log
+```
+
+```{r}
+scramble_peak_predictions <- read.table('../processed_data/peak_tile/model_files/20190501_peak_tile_split_hyperparam_tuned_predictions.txt',
+                              header = F, sep = '\t', col.names = c('sequence', 'predicted', 'observed')) %>% 
+    mutate(active = ifelse(observed > 1, 'active', 'inactive'))
+
+active_predictions <- filter(scramble_peak_predictions, active == 'active')
+pearson_active <- cor.test(active_predictions$observed, active_predictions$predicted)$estimate
+spearman_active <- cor.test(active_predictions$observed, active_predictions$predicted,
+                           method = 'spearman')$estimate
+
+ggplot(scramble_peak_predictions, aes(observed, predicted)) + 
+    geom_point(alpha = 0.50, aes(color = active)) +
+    scale_color_manual(values = c('navyblue', 'gray38')) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    annotate('text', x = 75, y = 1, color = 'navyblue',
+             label = paste0('r = ', signif(pearson_active, 3))) +
+    annotate('text', x = 75, y = 0.75, color = 'navyblue',
+             label = paste0('rho = ', signif(spearman_active, 3))) +
+    labs(title = 'Regression neural network trained on scramble+peak data and\n predicted on TSS data')
+
+
+```
+
+
+```{r}
+prc <- pr.curve(scores.class0 = scramble_peak_predictions$predicted[scramble_peak_predictions$observed > 1],
+                scores.class1 = scramble_peak_predictions$predicted[scramble_peak_predictions$observed < 1],
+                curve = T)
+plot(prc)
+```
+
+
+```{r}
+svr_predictions <- read.table('./nn/svr_predictions.txt',
+                              col.names = c('predicted', 'observed'))
+
+ggplot(svr_predictions, aes(observed, predicted)) + geom_point() +
+    scale_x_log10() + scale_y_log10()
+```
+
+```{r}
+prc <- PRROC::pr.curve(scores.class0 = svr_predictions$predicted[svr_predictions$observed > 1],
+                scores.class1 = svr_predictions$predicted[svr_predictions$observed < 1],
+                curve = T)
+plot(prc)
+```
+
+
+
+
+
+
+
+
+
+
+

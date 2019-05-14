@@ -35,10 +35,10 @@ def one_hot_encode_2d(sequences):
     sequence_length = len(sequences[0])
     integer_type = np.int8 if sys.version_info[
         0] == 2 else np.int32  # depends on Python version
-    integer_array = LabelEncoder().fit(np.array(('ACGT',)).view(integer_type)).transform(
+    integer_array = LabelEncoder().fit(np.array(('ACGTN',)).view(integer_type)).transform(
         sequences.view(integer_type)).reshape(len(sequences), sequence_length)
     one_hot_encoding = OneHotEncoder(
-        sparse=False, n_values=4, dtype=integer_type).fit_transform(integer_array)
+        sparse=False, n_values=5, dtype=integer_type).fit_transform(integer_array)
     # dimensions are n-samples, n-features. The one hot encoded vector is kept as a single
     # vector instead of split into 1x4 matrix. n-features = 4 * sequence_length
     return one_hot_encoding
@@ -56,11 +56,18 @@ def pad_sequence(seq, max_length):
 	return seq
 
 
-def process_seqs(filename, seq_length):
+def process_seqs(filename, seq_length, encode_type='1d'):
 
 	seqs = [line.split('\t')[0] for line in open(filename)]
 	padded_seqs = [pad_sequence(x, seq_length) for x in seqs]
-	X = one_hot_encode(np.array(padded_seqs))
+	if encode_type == '1d':
+		X = one_hot_encode(np.array(padded_seqs))
+	elif encode_type == '2d':
+		# only keep 150bp sequences
+		X = one_hot_encode_2d(np.array([x for x in padded_seqs]))
+	else:
+		raise ValueException('Non-valid encoding type')
+
 	y = np.array([float(line.strip().split('\t')[1]) for line in open(filename)])
 	return X, y
 

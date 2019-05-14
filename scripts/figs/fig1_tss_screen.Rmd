@@ -20,6 +20,9 @@ options(stringsAsFactors = F)
 
 Endo2 <- read.table("../../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted_std.txt",
                     header = T, fill  = T)
+
+ref <- read.table('../../ref/endo_lib_2016_controls_clean.txt',
+                  col.names = c('name', 'sequence'))
 ```
 
 Figure1A - Venn Diagram Values
@@ -28,7 +31,7 @@ Figure1A - Venn Diagram Values
 
 Storz <- Endo2[grepl('storz', Endo2$name),] #11899
 Wanner <- Endo2[grepl('wanner', Endo2$name),] #991
-regulondb <-Endo2[grepl('regulondb', Endo2$name),] #4907
+regulondb <- Endo2[grepl('regulondb', Endo2$name),] #4907
 
 
 storz_wanner <- inner_join(Storz, Wanner, by = 'name')
@@ -75,7 +78,8 @@ cor <- cor(Endo2$RNA_exp_1, Endo2$RNA_exp_2)
 ggplot(Endo2, aes(RNA_exp_1, RNA_exp_2)) + 
   geom_point() +
   scale_x_log10() + scale_y_log10() + annotation_logticks(sides= 'bl') +
-  annotate("text", label=paste("italic(r)==",signif(cor, 3)),parse=TRUE, x=.5, y=15, size = 8) +
+  annotate("text", label = paste("italic(r)==", signif(cor, 3)), parse = TRUE,
+           x = 0.5, y = 15, size = 8) +
   xlab('Technical Replicate #1') + ylab('Technical Replicate #2') +
   ggtitle('Correlation between replicate TSS measurements') +
   geom_point(data=neg,aes(RNA_exp_1, RNA_exp_2), color = "firebrick1") +
@@ -112,16 +116,16 @@ ggsave('../../figs/fig1/tss_lib_expression_dist.pdf', units = 'in', width = 7.29
 Figure 1E - Number of active promoters per source
 ```{r}
 data.frame(Expression = c("Active TSS", "Inactive TSS"),
-                         Value = c(nrow(filter(Wanner, expn_med > threshold)),
-                                   nrow(filter(Wanner, expn_med < threshold))),
+                         Value = c(nrow(filter(Wanner, expn_med_fitted_scaled > threshold)),
+                                   nrow(filter(Wanner, expn_med_fitted_scaled < threshold))),
                          source = "Wanner") %>%
   rbind(., data.frame(Expression = c("Active TSS", "Inactive TSS"),
-                         Value = c(nrow(filter(Storz, expn_med > threshold)),
-                                   nrow(filter(Storz, expn_med < threshold))),
+                         Value = c(nrow(filter(Storz, expn_med_fitted_scaled > threshold)),
+                                   nrow(filter(Storz, expn_med_fitted_scaled < threshold))),
                          source = "Storz")) %>%
  rbind(., data.frame(Expression = c("Active TSS", "Inactive TSS"),
-                         Value = c(nrow(filter(regulondb, expn_med > threshold)),
-                                   nrow(filter(regulondb, expn_med < threshold))),
+                         Value = c(nrow(filter(regulondb, expn_med_fitted_scaled > threshold)),
+                                   nrow(filter(regulondb, expn_med_fitted_scaled < threshold))),
                          source = "RegulonDB")) %>%
         ggplot(aes(x=source, y=Value, fill = Expression)) + 
           geom_bar(stat="identity", position = position_dodge(width = 0), color = 'black') +
@@ -137,6 +141,24 @@ data.frame(Expression = c("Active TSS", "Inactive TSS"),
 
 ggsave('../../figs/fig1/activity_by_source.pdf', units = 'in', height = 8.1, width = 7.46)
 ```
+
+Alternative to Fig1E, general proportion of active/inactive, not broken down by source.
+
+```{r}
+ggplot(Endo2, aes(active)) + 
+    geom_bar(aes(fill = active)) +
+    scale_fill_manual(values = c("#2E6EB7", "#F6BA60")) +
+    scale_x_discrete(expand = c(0, 2)) +
+    theme(legend.position = c(0,1),
+          axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
+          axis.title.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20), 
+          legend.text=element_text(size=20)) 
+
+ggsave('../../figs/fig1/active_bar.pdf', units = 'in', height = 5, width = 4)
+```
+
 
 
 Figure 1F - inactive promoters are enriched for -10 sequences but not -35s
@@ -160,11 +182,21 @@ T = c(0.8244,	0.0000,	0.4591,	0.2254,	0.1339,	0.8951)
 pwm_s70 <- data.frame(A,C,G,T)
 pwm_s70 <- t(pwm_s70)
 
-Endo2_stats$minus10_matches <- sapply(as.character(Endo2_stats$variant),function(x) matchPWM(pwm_s70,str_sub(x,-150,-1)))
-Endo2_stats$minus10_scores <- sapply(Endo2_stats$minus10_matches,function(x) PWMscoreStartingAt(pwm_s70, subject(x),start(x)))
+Endo2_stats$minus10_matches <- sapply(as.character(Endo2_stats$variant),
+                                      function(x) matchPWM(pwm_s70,
+                                                           str_sub(x,-150,-1)))
+
+Endo2_stats$minus10_scores <- sapply(Endo2_stats$minus10_matches,
+                                     function(x) PWMscoreStartingAt(pwm_s70, 
+                                                                    subject(x),
+                                                                    start(x)))
+
 Endo2_stats$minus10_max_score <- sapply(Endo2_stats$minus10_scores,max)
 Endo2_stats$minus10_max_entry <- sapply(Endo2_stats$minus10_scores,which.max)
-Endo2_stats$minus10_scores <- sapply(Endo2_stats$minus10_matches,function(x) PWMscoreStartingAt(pwm_s70, subject(x),start(x)))
+Endo2_stats$minus10_scores <- sapply(Endo2_stats$minus10_matches,
+                                     function(x) PWMscoreStartingAt(pwm_s70, 
+                                                                    subject(x),
+                                                                    start(x)))
 
 for (i in seq(1,length(Endo2_stats$minus10_matches))) {
     if(Endo2_stats$minus10_max_score[i] == -Inf){
@@ -187,7 +219,7 @@ Endo2_stats$minus10_max_entry <- NULL
 Figure 1E cont. - Minus 35 Scoring
 
 ```{r warning=FALSE}
-#This code uses the pwms from bTSSFinder (which come from literature) to find the best -10 site
+#This code uses the pwms from bTSSFinder (which come from literature) to find the best -35 site
 A= c(0.0000,	0.0784,	0.0362,	0.4894,	0.3605,	0.4208)
 C= c(0.1109,	0.0656,	0.0747,	0.2851,	0.3605,	0.0769)
 G= c(0.1267,	0.0181,	0.6192,	0.1041,	0.0000,	0.2225)
@@ -262,8 +294,25 @@ ggsave('../../figs/fig1/tss_promoter_scores.pdf', units = 'in', width = 9.06, he
 ```
 
 
+```{r}
+# use motif scores to classify sequences and form PR curves
+minus35_prc <- PRROC::pr.curve(scores.class0 = Endo2_stats$minus35_max_score[Endo2_stats$active == 'active'],
+                scores.class1 = Endo2_stats$minus35_max_score[Endo2_stats$active == 'inactive'],
+                curve = T)
+plot(minus35_prc)
+```
 
+```{r}
+minus10_prc <- PRROC::pr.curve(scores.class0 = Endo2_stats$minus10_max_score[Endo2_stats$active == 'active'],
+                scores.class1 = Endo2_stats$minus10_max_score[Endo2_stats$active == 'inactive'],
+                curve = T)
+plot(minus10_prc)
+```
 
+```{r}
+active <- Endo2_stats$minus35_max_score[Endo2_stats$active == 'active']
+inactive <- Endo2_stats$minus35_max_score[Endo2_stats$active == 'inactive']
+```
 
 
 
