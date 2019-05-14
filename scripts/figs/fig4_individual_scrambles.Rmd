@@ -30,7 +30,7 @@ endo_scramble <- endo_scramble %>%
                                 grepl('neg', .$name) ~ 'negative',
                                 TRUE ~ 'scramble'))
 
-table(endo_scramble$category)
+negatives <- filter(endo_scramble, category == 'negative')
 neg_median <- median(negatives$expn_med_fitted_scaled, na.rm = T)
 neg_mad <- mad(negatives$expn_med_fitted_scaled, na.rm = T)
 threshold <- neg_median + 3*neg_mad
