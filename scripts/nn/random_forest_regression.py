@@ -12,6 +12,8 @@ except ImportError:
 import sys
 import argparse
 import time
+import itertools
+from collections import Counter
 
 num_epochs = 100
 
@@ -70,6 +72,16 @@ def process_seqs(filename, seq_length, encode_type='1d'):
 
 	y = np.array([float(line.strip().split('\t')[1]) for line in open(filename)])
 	return X, y
+
+
+def get_kmers(seqs, k, cutoff):
+
+	kmers = list(itertools.chain(*[[x[i:i+k] for i in range(len(x)-k+1)] for x in seqs]))
+	kmer_count = Counter(kmers)
+	print "Unique k-mers:", len(kmer_count)
+	kmer_filtered = [x for x in kmer_count if kmer_count[x] >= cutoff]
+	print "k-mers above cutoff:", len(kmer_filtered)
+	return kmer_filtered
 
 
 if __name__ == '__main__':
