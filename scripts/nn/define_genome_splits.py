@@ -71,6 +71,7 @@ if __name__ == '__main__':
 		positions used for training''')
 	parser.add_argument('genome_size', type=int, help='Size of genome (bp)')
 	parser.add_argument('infile_train',  help='''filename of formatted expression data.
+		No column names.
 		Must include columns for variant, expn_med_fitted_scaled, start, end''')
 	parser.add_argument('infile_test', help='''filename of formatted expression data.
 		Must include columns for variant, expn_med_fitted_scaled, start, end''')
@@ -100,8 +101,11 @@ if __name__ == '__main__':
 	split_lookup = {x : 'test' if x in test_splits else 'train' for x in splits}
 
 	# read in datasets
-	train = pd.read_table(args.infile_train, sep='\t', header=0)
-	test = pd.read_table(args.infile_test, sep='\t', header=0)
+	train = pd.read_table(args.infile_train, sep='\t', header=None)
+	test = pd.read_table(args.infile_test, sep='\t', header=None)
+
+	train.columns = ['variant', 'expn_med_fitted_scaled', 'start', 'end']
+	test.columns = ['variant', 'expn_med_fitted_scaled', 'start', 'end']
 
 
 	if args.floor:
@@ -110,9 +114,15 @@ if __name__ == '__main__':
 		train['expn_med_fitted_scaled'] = np.where(train['expn_med_fitted_scaled'] < 1, 1, train['expn_med_fitted_scaled'])
 
 	
+	# define output prefixes
+	train_prefix = args.infile_train.replace('.txt', '') 
+	test_prefix = args.infile_test.replace('.txt', '')
+	if args.floor:
+		train_prefix += '_floored'
+		test_prefix += '_floored'
+
 	# For train, only sequences that fall into train splits will be written
-	outfile_train_name = args.infile_train.replace('.txt', '') + '_train_genome_split.txt'
-	print outfile_train_name
+	outfile_train_name = train_prefix + '_train_genome_split.txt'
 	with open(outfile_train_name, 'w') as outfile_train:
 		for i in range(len(train)):
 			
@@ -132,8 +142,8 @@ if __name__ == '__main__':
 		validation_split = test_splits[1]
 		test_split = test_splits[0]
 
-		outfile_test = open(args.infile_test.replace('.txt', '') + '_test_genome_split.txt', 'w')
-		outfile_val = open(args.infile_test.replace('.txt', '') + '_validation_genome_split.txt', 'w')
+		outfile_test = open(test_prefix + '_test_genome_split.txt', 'w')
+		outfile_val = open(test_prefix + '_validation_genome_split.txt', 'w')
 
 		for i in range(len(test)):
 
@@ -149,7 +159,7 @@ if __name__ == '__main__':
 
 	else:
 		# For test, only sequences that fall into test splits will be written
-		outfile_test_name = args.infile_test.replace('.txt', '') + '_test_genome_split.txt'
+		outfile_test_name = test_prefix + '_test_genome_split.txt'
 		with open(outfile_test_name, 'w') as outfile_test:
 			for i in range(len(test)):
 				

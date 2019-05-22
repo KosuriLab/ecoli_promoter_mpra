@@ -220,7 +220,7 @@ python dragonn_hyperparameter_tuning_regression.py ../../processed_data/peak_til
 Train on both scramble and peak tile
 
 ```
-python dragonn_hyperparameter_tuning_regression.py ../../processed_data/endo_scramble/model_files/scramble_peak_tile_expression_model_format_train_genome_split.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format_test_genome_split.txt 150 4 50 100 0.2 100 ../../processed_data/endo_scramble/model_files/20190506_scramble_peak_tile_predefine_valid_split_hyperparam_tuned --validation ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format_validation_genome_split.txt > ../../processed_data/endo_scramble/model_files/20190508_scramble_peak_tile_predefined_valid_split_hyperparam_tuned.log
+python dragonn_hyperparameter_tuning_regression.py ../../processed_data/endo_scramble/model_files/scramble_peak_tile_expression_model_format_train_genome_split.txt ../../processed_data/endo_tss/lb/model_files/tss_expression_model_format_test_genome_split.txt 150 4 50 100 0.2 100 ../../processed_data/endo_tss/lb/model_files/20190515/scramble_peak_tss_test > ../../processed_data/endo_scramble/model_files/20190515_scramble_peak_tile_split_hyperparam_tuned.log
 ```
 
 ```{r}
