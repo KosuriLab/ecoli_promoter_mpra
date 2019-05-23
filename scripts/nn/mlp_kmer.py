@@ -6,6 +6,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 import argparse
 
+
 def read_file(dataset_filename):
     """
     Load sequences and expression values for training data
@@ -22,19 +23,19 @@ def read_file(dataset_filename):
     return sequences, expression
 
 
-def read_test_file(test_dataset_filename):
-    """
-    Load names and sequences for test data
-    """
-    sequences = []
-    names = []
-    with open(test_dataset_filename, 'r') as test_f:
-        for line in test_f:
-            data = (line.strip('\n')).split('\t')
-            sequence, expression = data[:]
-            names.append(name)
-            sequences.append(sequence)
-    return sequences, names
+# def read_test_file(test_dataset_filename):
+#     """
+#     Load names and sequences for test data
+#     """
+#     sequences = []
+#     names = []
+#     with open(test_dataset_filename, 'r') as test_f:
+#         for line in test_f:
+#             data = (line.strip('\n')).split('\t')
+#             sequence, expression = data[:]
+#             names.append(name)
+#             sequences.append(sequence)
+#     return sequences, names
 
 
 def gen_dict(keys):
@@ -105,7 +106,7 @@ def gen_features_kmers(sequences, k_min, k_max, test_sequences, count_cutoff, us
     return features, test_features
 
 
-def predict(features, expression, test_features, test_names, out_filename, test_sequences):
+def predict(features, expression, test_features, out_filename, test_sequences):
     """
     Predict expression of test sequences
     """
@@ -127,15 +128,17 @@ def predict(features, expression, test_features, test_names, out_filename, test_
 
                 clf.fit(features, expression)
                 predictions = clf.predict(test_features)
-                file_object = open(out_filename, "w")
-                line = "name\texpression\n"
-                file_object.write(line)
-                for idx, prediction in enumerate(predictions):
-                    line = '\t'.join([test_names[idx], test_sequences[idx], str(prediction)]) + "\n"
-                    file_object.write(line)
+
+    return predictions
+                # file_object = open(out_filename, "w")
+                # line = "name\texpression\n"
+                # file_object.write(line)
+                # for idx, prediction in enumerate(predictions):
+                #     line = '\t'.join([test_sequences[idx], str(prediction)]) + "\n"
+                #     file_object.write(line)
 
 
-def main(argv):
+if __name__ == '__main__'
     parser = argparse.ArgumentParser()
     parser.add_argument('train', help='Filename of training set')
     parser.add_argument('test', help='Filename of test set')
@@ -146,12 +149,12 @@ def main(argv):
 
     args = parser.parse_args()
 
-    sequences, expression = read_file(args.train)
+    sequences, y_train = read_file(args.train)
     print 'loaded training data'
-    test_sequences, names = read_test_file(args.test)
+    test_sequences, y_test = read_file(args.test)
     print 'loaded test data'
 
-    features, test_features = gen_features_kmers(
+    X_train, X_test = gen_features_kmers(
         sequences=sequences, 
         k_min=args.min_k, 
         k_max=args.max_k,
@@ -161,18 +164,20 @@ def main(argv):
     print 'generated features'
 
     scaler = StandardScaler()
-    scaler.fit(features)
-    features = scaler.transform(features)
-    test_features = scaler.transform(test_features)
-    predict(features, expression, test_features, names, args.output_name, test_sequences)
+    scaler.fit(X_train)
+    features = scaler.transform(X_train)
+    X_test = scaler.transform(X_test)
+    predictions = predict(X_train, y_train, X_test)
+
     print 'predicted expression'
+
+    with open(args.output_name, 'w') as outfile:
+        for i in range(len(predictions)):
+            outfile.write(str(predictions[i]) + '\t' + str(y_test[i]) + '\n')
 
     print 'job complete'
 
 
-
-if __name__ == "__main__":
-    main(sys.argv[1:])
 
 
 
