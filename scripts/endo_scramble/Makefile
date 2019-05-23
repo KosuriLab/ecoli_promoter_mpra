@@ -19,8 +19,9 @@ expression: $(DATA)/endo_scramble_expression.txt
 format: $(DATA)/endo_scramble_expression_formatted.txt
 
 
-# Data from two separate mapping runs 
-#############ls p################### Read merging ################################
+# Combine data from four mapping runs
+
+################################ Read merging ################################
 $(MERGE_DEST)/pEndoScramble_80_combined.paired.assembled.fastq: $(RAW_DATA)/bc_map/pEndoScramble_80_combined_R1.fastq.gz \
 	$(RAW_DATA)/bc_map/pEndoScramble_80_combined_R2.fastq.gz ../pearallel.sh
 	../pearallel.sh $(RAW_DATA)/bc_map/pEndoScramble_80_combined $(MERGE_DEST)
@@ -63,3 +64,6 @@ $(DATA)/endo_scramble_expression.txt: $(DATA)/endo_scramble_combined_bc_map.txt 
 
 $(DATA)/endo_scramble_expression_formatted.txt: $(DATA)/endo_scramble_expression.txt
 	@ Rscript --vanilla endo_scramble_format.R $< $@
+
+
+
