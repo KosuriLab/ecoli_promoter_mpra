@@ -95,7 +95,7 @@ if __name__ == '__main__':
 	parser.add_argument('output_name')
 	parser.add_argument('--onehot', action='store_true', help='''If feature is raw DNA
 		sequence and should be one-hot encoded''')
-	parser.add_argument('--seq_length', help='sequence length, needed for one-hot encoding')
+	parser.add_argument('--seq_length', type=int, help='sequence length, needed for one-hot encoding')
 	args = parser.parse_args()
 
 	# load in pre-defined splits
