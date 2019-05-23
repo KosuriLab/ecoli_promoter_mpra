@@ -138,7 +138,7 @@ def predict(features, expression, test_features, out_filename, test_sequences):
                 #     file_object.write(line)
 
 
-if __name__ == '__main__'
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('train', help='Filename of training set')
     parser.add_argument('test', help='Filename of test set')
