@@ -55,9 +55,8 @@ def find_kmers(pos_kmers, string, k):
     kmer_dict = gen_dict(pos_kmers)
     str_length = len(string)
     kmers = [string[i:i+k] for i in range(0, str_length-k+1)]
-    for kmer in kmers:
-        if kmer in kmer_dict:
-            kmer_dict[kmer] += 1
+    kmer_dict = dict(Counter(kmers))
+
     return kmer_dict
 
 
@@ -86,7 +85,7 @@ def find_kmers(pos_kmers, string, k):
 #         return sorted(kmer_dict.keys())
 
 
-def find_rel_kmers(sequences, k, count_cutoff):
+def find_relevant_kmers(sequences, k, count_cutoff):
     """
     Get kmer strings in sequences above cutoff
     """
@@ -102,23 +101,39 @@ def find_rel_kmers(sequences, k, count_cutoff):
 
 
 def gen_features_kmers(sequences, k_min, k_max, test_sequences, count_cutoff):
+    
     """
     Generate features from kmers
     """
+
     features = [[] for i in range(len(sequences))]
     test_features = [[] for i in range(len(test_sequences))]
     for k in range(k_min, k_max + 1):
-        pos_kmers = find_rel_kmers(sequences, k, count_cutoff)
-        print("k: ", k, ", len: ", len(pos_kmers))
+        relevant_kmers = find_relevant_kmers(sequences, k, count_cutoff)
+        print("k: ", k, ", len: ", len(relevant_kmers))
+        
         for idx, seq in enumerate(sequences):
-            kmer_dict = find_kmers(pos_kmers, seq, k)
-            for kmer in pos_kmers:
-                features[idx].append(kmer_dict[kmer])
+            kmer_dict = find_kmers(relevant_kmers, seq, k)
+            # for kmer in relevant_kmers:
+            # features[idx].append(kmer_dict[kmer])
+            sorted_kmer_counts = [kmer_dict[kmer] for kmer in relevant_kmers]
+            features[idx] = sorted_kmer_counts
+
+        print "Created train features"
+                
         for idx, seq in enumerate(test_sequences):
-            kmer_dict = find_kmers(pos_kmers, seq, k)
-            for kmer in pos_kmers:
-                test_features[idx].append(kmer_dict[kmer])
+            kmer_dict = find_kmers(relevant_kmers, seq, k)
+            # for kmer in relevant_kmers:
+            #     test_features[idx].append(kmer_dict[kmer])
+            sorter_kmer_counts = [kmer_dict[kmer] for kmer in relevant_kmers]
+            test_features[idx] = sorted_kmer_counts
+
+        print "Created test features"
+
     return features, test_features
+
+
+        
 
 
 def predict(features, expression, test_features, out_filename, test_sequences):
