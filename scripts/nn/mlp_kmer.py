@@ -5,7 +5,7 @@ import sys
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 import argparse
-
+from collections import Counter
 
 def read_file(dataset_filename):
     """
@@ -61,39 +61,54 @@ def find_kmers(pos_kmers, string, k):
     return kmer_dict
 
 
-def find_rel_kmers(sequences, k, count_cutoff, use_cutoff):
+# def find_rel_kmers(sequences, k, count_cutoff, use_cutoff):
+#     """
+#     Get kmer strings in training data meeting cutoff
+#     """
+#     kmer_dict = dict()
+#     for seq in sequences:
+#         seq_len = len(seq)
+#         kmers = [seq[i:i+k] for i in range(0, seq_len-k+1)]
+#         for kmer in kmers:
+#             if kmer in kmer_dict:
+#                 kmer_dict[kmer] += 1
+#             else:
+#                 kmer_dict[kmer] = 1
+#     if use_cutoff:
+#         cutoff = count_cutoff
+#         print("cutoff", cutoff)
+#         rel_kmer = []
+#         for kmer in kmer_dict:
+#             if kmer_dict[kmer] >= cutoff:
+#                 rel_kmer.append(kmer)
+#         return rel_kmer
+#     else:
+#         return sorted(kmer_dict.keys())
+
+
+def find_rel_kmers(sequences, k, count_cutoff):
     """
-    Get kmer strings in training data meeting cutoff
+    Get kmer strings in sequences above cutoff
     """
-    kmer_dict = dict()
+
+    kmer_counter = Counter()
     for seq in sequences:
         seq_len = len(seq)
-        kmers = [seq[i:i+k] for i in range(0, seq_len-k+1)]
-        for kmer in kmers:
-            if kmer in kmer_dict:
-                kmer_dict[kmer] += 1
-            else:
-                kmer_dict[kmer] = 1
-    if use_cutoff:
-        cutoff = count_cutoff
-        print("cutoff", cutoff)
-        rel_kmer = []
-        for kmer in kmer_dict:
-            if kmer_dict[kmer] >= cutoff:
-                rel_kmer.append(kmer)
-        return rel_kmer
-    else:
-        return sorted(kmer_dict.keys())
+        kmers = [seq[i:i+k] for i in range(seq_len-k+1)]
+        kmer_counter.update(Counter(kmers))
+
+    rel_kmers = [x for x in kmer_counter if kmer_counter[x] >= count_cutoff]
+    return sorted(rel_kmers)
 
 
-def gen_features_kmers(sequences, k_min, k_max, test_sequences, count_cutoff, use_cutoff):
+def gen_features_kmers(sequences, k_min, k_max, test_sequences, count_cutoff):
     """
     Generate features from kmers
     """
     features = [[] for i in range(len(sequences))]
     test_features = [[] for i in range(len(test_sequences))]
     for k in range(k_min, k_max + 1):
-        pos_kmers = find_rel_kmers(sequences, k, count_cutoff, use_cutoff)
+        pos_kmers = find_rel_kmers(sequences, k, count_cutoff)
         print("k: ", k, ", len: ", len(pos_kmers))
         for idx, seq in enumerate(sequences):
             kmer_dict = find_kmers(pos_kmers, seq, k)
@@ -145,7 +160,7 @@ if __name__ == '__main__'
     parser.add_argument('output_name', help='Filename of output')
     parser.add_argument('max_k', type=int, help='Max k-mer length')
     parser.add_argument('min_k', type=int, nargs='?', const=1, help='Minimum k-mer length')
-    parser.add_argument('count_cutoff', type=int, nargs='?', const=100, help='Minimum k-mer count to count as feature')
+    parser.add_argument('count_cutoff', type=int, nargs='?', const=0, help='Minimum k-mer count to count as feature')
 
     args = parser.parse_args()
 
@@ -159,8 +174,7 @@ if __name__ == '__main__'
         k_min=args.min_k, 
         k_max=args.max_k,
         test_sequences=test_sequences, 
-        count_cutoff=args.count_cutoff, 
-        use_cutoff=True)
+        count_cutoff=args.count_cutoff)
     print 'generated features'
 
     scaler = StandardScaler()
