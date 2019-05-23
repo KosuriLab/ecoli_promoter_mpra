@@ -1,4 +1,5 @@
 # from __future__ import absolute_import, division, print_function
+import pandas as pd
 import numpy as np, random
 np.random.seed(1)
 random.seed(1)
@@ -43,7 +44,6 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 
 	# load in pre-defined splits
-	seq_length = args.seq_length
 	print("loading training and test set...")
 	X_train, y_train = process_seqs(args.train)
 	X_test, y_test = process_seqs(args.test)
