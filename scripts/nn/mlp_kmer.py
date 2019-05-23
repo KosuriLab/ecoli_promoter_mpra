@@ -15,7 +15,7 @@ def read_file(dataset_filename):
     with open(dataset_filename, 'r') as input_f:
         for line in input_f:
             data = (line.strip('\n')).split('\t')
-            name, sequence, exp_value = data[:]
+            sequence, exp_value = data[:]
             sequences.append(sequence)
             exp = float(exp_value)
             expression.append(exp)
@@ -31,7 +31,7 @@ def read_test_file(test_dataset_filename):
     with open(test_dataset_filename, 'r') as test_f:
         for line in test_f:
             data = (line.strip('\n')).split('\t')
-            name, sequence, expression = data[:]
+            sequence, expression = data[:]
             names.append(name)
             sequences.append(sequence)
     return sequences, names
@@ -141,8 +141,8 @@ def main(argv):
     parser.add_argument('test', help='Filename of test set')
     parser.add_argument('output_name', help='Filename of output')
     parser.add_argument('max_k', type=int, help='Max k-mer length')
-    parser.add_argument('min_k', type=int, const=1, help='Minimum k-mer length')
-    parser.add_argument('count_cutoff', type=int, const=100, help='Minimum k-mer count to count as feature')
+    parser.add_argument('min_k', type=int, nargs='?', const=1, help='Minimum k-mer length')
+    parser.add_argument('count_cutoff', type=int, nargs='?', const=100, help='Minimum k-mer count to count as feature')
 
     args = parser.parse_args()
 
