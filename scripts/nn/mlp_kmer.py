@@ -116,7 +116,7 @@ def gen_features_kmers(sequences, k_min, k_max, test_sequences, count_cutoff):
             kmer_dict = find_kmers(relevant_kmers, seq, k)
             # for kmer in relevant_kmers:
             # features[idx].append(kmer_dict[kmer])
-            sorted_kmer_counts = [kmer_dict[kmer] for kmer in relevant_kmers]
+            sorted_kmer_counts = [kmer_dict.get(kmer, 0) for kmer in relevant_kmers]
             features[idx] = sorted_kmer_counts
 
         print "Created train features"
@@ -125,7 +125,7 @@ def gen_features_kmers(sequences, k_min, k_max, test_sequences, count_cutoff):
             kmer_dict = find_kmers(relevant_kmers, seq, k)
             # for kmer in relevant_kmers:
             #     test_features[idx].append(kmer_dict[kmer])
-            sorter_kmer_counts = [kmer_dict[kmer] for kmer in relevant_kmers]
+            sorter_kmer_counts = [kmer_dict.get(kmer, 0) for kmer in relevant_kmers]
             test_features[idx] = sorted_kmer_counts
 
         print "Created test features"
