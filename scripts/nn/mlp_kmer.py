@@ -1,11 +1,13 @@
 #!/usr/bin/python
 
 from __future__ import division
+import timeit
 import sys
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 import argparse
 from collections import Counter
+import pandas as pd
 
 def read_file(dataset_filename):
     """
@@ -38,26 +40,26 @@ def read_file(dataset_filename):
 #     return sequences, names
 
 
-def gen_dict(keys):
-    """
-    Generate dictionary given list of keys
-    """
-    kmer_dict = dict()
-    for key in keys:
-        kmer_dict[key] = 0
-    return kmer_dict
+# def gen_dict(keys):
+#     """
+#     Generate dictionary given list of keys
+#     """
+#     kmer_dict = dict()
+#     for key in keys:
+#         kmer_dict[key] = 0
+#     return kmer_dict
 
 
-def find_kmers(pos_kmers, string, k):
-    """
-    Count instances of kmers in sequence string
-    """
-    kmer_dict = gen_dict(pos_kmers)
-    str_length = len(string)
-    kmers = [string[i:i+k] for i in range(0, str_length-k+1)]
-    kmer_dict = dict(Counter(kmers))
+# def find_kmers(pos_kmers, string, k):
+#     """
+#     Count instances of kmers in sequence string
+#     """
+#     kmer_dict = gen_dict(pos_kmers)
+#     str_length = len(string)
+#     kmers = [string[i:i+k] for i in range(0, str_length-k+1)]
+#     kmer_dict = dict(Counter(kmers))
 
-    return kmer_dict
+#     return kmer_dict
 
 
 # def find_rel_kmers(sequences, k, count_cutoff, use_cutoff):
@@ -85,58 +87,79 @@ def find_kmers(pos_kmers, string, k):
 #         return sorted(kmer_dict.keys())
 
 
-def find_relevant_kmers(sequences, k, count_cutoff):
-    """
-    Get kmer strings in sequences above cutoff
-    """
+# def find_relevant_kmers(sequences, k, count_cutoff):
+#     """
+#     Get kmer strings in sequences above cutoff
+#     """
 
-    kmer_counter = Counter()
-    for seq in sequences:
-        seq_len = len(seq)
-        kmers = [seq[i:i+k] for i in range(seq_len-k+1)]
-        kmer_counter.update(Counter(kmers))
+#     kmer_counter = Counter()
+#     for seq in sequences:
+#         seq_len = len(seq)
+#         kmers = [seq[i:i+k] for i in range(seq_len-k+1)]
+#         kmer_counter.update(Counter(kmers))
 
-    rel_kmers = [x for x in kmer_counter if kmer_counter[x] >= count_cutoff]
-    return sorted(rel_kmers)
+#     rel_kmers = [x for x in kmer_counter if kmer_counter[x] >= count_cutoff]
+#     return sorted(rel_kmers)
 
 
-def gen_features_kmers(sequences, k_min, k_max, test_sequences, count_cutoff):
+# def gen_features_kmers(sequences, k_min, k_max, test_sequences, count_cutoff):
     
-    """
-    Generate features from kmers
-    """
+#     """
+#     Generate features from kmers
+#     """
 
-    features = [[] for i in range(len(sequences))]
-    test_features = [[] for i in range(len(test_sequences))]
-    for k in range(k_min, k_max + 1):
-        relevant_kmers = find_relevant_kmers(sequences, k, count_cutoff)
-        print("k: ", k, ", len: ", len(relevant_kmers))
+#     features = [[] for i in range(len(sequences))]
+#     test_features = [[] for i in range(len(test_sequences))]
+#     for k in range(k_min, k_max + 1):
+#         relevant_kmers = find_relevant_kmers(sequences, k, count_cutoff)
+#         print("k: ", k, ", len: ", len(relevant_kmers))
         
-        for idx, seq in enumerate(sequences):
-            kmer_dict = find_kmers(relevant_kmers, seq, k)
-            # for kmer in relevant_kmers:
-            # features[idx].append(kmer_dict[kmer])
-            sorted_kmer_counts = [kmer_dict.get(kmer, 0) for kmer in relevant_kmers]
-            features[idx] = sorted_kmer_counts
+#         for idx, seq in enumerate(sequences):
+#             kmer_dict = find_kmers(relevant_kmers, seq, k)
+#             # for kmer in relevant_kmers:
+#             # features[idx].append(kmer_dict[kmer])
+#             sorted_kmer_counts = [kmer_dict.get(kmer, 0) for kmer in relevant_kmers]
+#             features[idx] = sorted_kmer_counts
 
-        print "Created train features"
+#         print "Created train features"
                 
-        for idx, seq in enumerate(test_sequences):
-            kmer_dict = find_kmers(relevant_kmers, seq, k)
-            # for kmer in relevant_kmers:
-            #     test_features[idx].append(kmer_dict[kmer])
-            sorter_kmer_counts = [kmer_dict.get(kmer, 0) for kmer in relevant_kmers]
-            test_features[idx] = sorted_kmer_counts
+#         for idx, seq in enumerate(test_sequences):
+#             kmer_dict = find_kmers(relevant_kmers, seq, k)
+#             # for kmer in relevant_kmers:
+#             #     test_features[idx].append(kmer_dict[kmer])
+#             sorter_kmer_counts = [kmer_dict.get(kmer, 0) for kmer in relevant_kmers]
+#             test_features[idx] = sorted_kmer_counts
 
-        print "Created test features"
+#         print "Created test features"
 
-    return features, test_features
-
-
-        
+#     return features, test_features
 
 
-def predict(features, expression, test_features, out_filename, test_sequences):
+def generate_filtered_kmer_counts(sequences, k, relevant_kmers=None, cutoff=None):
+    
+    # all_kmers = [''.join(x) for x in itertools.product(['A', 'C', 'G', 'T'], repeat=k)]
+    
+    start = timeit.default_timer()
+    print "Counting k-mers of length", k, "in all sequences..."
+    kmer_counts = [dict(Counter([seq[i:i+k] for i in range(len(seq)-k+1)])) for seq in sequences]
+    elapsed = timeit.default_timer() - start
+    print "Elapsed time:", elapsed
+    # ensures all columns are present, even if some keys not present in all dictionaries
+    print "Creating features..."
+    kmer_df = pd.DataFrame.from_records(kmer_counts)
+    if not relevant_kmers:
+        kmer_sums = kmer_df.sum()
+        relevant_kmers = list(kmer_sums[kmer_sums >= cutoff].index)
+    print "Filtering..."
+    # kmer_df_filtered = kmer_df.loc[:, kmer_df.columns.str.contains('|'.join(relevant_kmers))]
+    kmer_df_filtered = kmer_df[relevant_kmers]
+    kmer_df_filtered.fillna(0, inplace=True)
+    print "Number of filtered k-mers:", len(relevant_kmers)
+    return kmer_df_filtered, relevant_kmers
+
+
+
+def predict(features, expression, test_features):
     """
     Predict expression of test sequences
     """
@@ -178,25 +201,32 @@ if __name__ == '__main__':
     parser.add_argument('count_cutoff', type=int, nargs='?', const=0, help='Minimum k-mer count to count as feature')
 
     args = parser.parse_args()
-
+    
+    count_cutoff = args.count_cutoff
     sequences, y_train = read_file(args.train)
     print 'loaded training data'
     test_sequences, y_test = read_file(args.test)
     print 'loaded test data'
 
-    X_train, X_test = gen_features_kmers(
-        sequences=sequences, 
-        k_min=args.min_k, 
-        k_max=args.max_k,
-        test_sequences=test_sequences, 
-        count_cutoff=args.count_cutoff)
-    print 'generated features'
+    X_train_all = pd.DataFrame()
+    X_test_all = pd.DataFrame()
+    for k in range(args.min_k, args.max_k+1):
+    # for k in range(min_k, max_k+1):
+        print "Train:"
+        X_train, relevant_kmers = generate_filtered_kmer_counts(sequences, k, cutoff=count_cutoff)
+        X_train_all = pd.concat([X_train_all, X_train], axis=1)
+        print "Test:"
+        X_test, relevant_kmers = generate_filtered_kmer_counts(test_sequences, k,
+            relevant_kmers=relevant_kmers)
+        X_test_all = pd.concat([X_test_all, X_test], axis=1)
 
+    print 'generated features'
+    # remove mean and scale to unit variance
     scaler = StandardScaler()
-    scaler.fit(X_train)
-    features = scaler.transform(X_train)
-    X_test = scaler.transform(X_test)
-    predictions = predict(X_train, y_train, X_test)
+    scaler.fit(X_train_all)
+    X_train_features = scaler.transform(X_train_all)
+    X_test_features = scaler.transform(X_test_all)
+    predictions = predict(X_train_features, y_train, X_test_features)
 
     print 'predicted expression'
 
