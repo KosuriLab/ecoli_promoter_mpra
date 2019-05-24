@@ -206,17 +206,17 @@ if __name__ == '__main__':
     test_sequences, y_test = read_file(args.test)
     print 'loaded test data'
 
-X_train_all = pd.DataFrame()
-X_test_all = pd.DataFrame()
-# for k in range(args.min_k, args.max_k):
-for k in range(min_k, max_k+1):
-    print "Train:"
-    X_train, relevant_kmers = generate_filtered_kmer_counts(sequences, k, cutoff=count_cutoff)
-    X_train_all = pd.concat([X_train_all, X_train], axis=1)
-    print "Test:"
-    X_test, relevant_kmers = generate_filtered_kmer_counts(test_sequences, k,
-        relevant_kmers=relevant_kmers)
-    X_test_all = pd.concat([X_test_all, X_test], axis=1)
+    X_train_all = pd.DataFrame()
+    X_test_all = pd.DataFrame()
+    for k in range(args.min_k, args.max_k):
+    # for k in range(min_k, max_k+1):
+        print "Train:"
+        X_train, relevant_kmers = generate_filtered_kmer_counts(sequences, k, cutoff=count_cutoff)
+        X_train_all = pd.concat([X_train_all, X_train], axis=1)
+        print "Test:"
+        X_test, relevant_kmers = generate_filtered_kmer_counts(test_sequences, k,
+            relevant_kmers=relevant_kmers)
+        X_test_all = pd.concat([X_test_all, X_test], axis=1)
 
     print 'generated features'
     # remove mean and scale to unit variance
