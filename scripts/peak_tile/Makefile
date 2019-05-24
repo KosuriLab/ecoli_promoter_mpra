@@ -25,7 +25,7 @@ split: $(DATA)/peak_tile_expression_90train.txt
 # map combined reads
 $(MERGE_DEST)/pPeakTiling_82_combined.paired.assembled.fastq: $(RAW_DATA)/bc_map/pPeakTiling_82_combined_R1.fastq.gz \
 	$(RAW_DATA)/bc_map/pPeakTiling_82_combined_R2.fastq.gz ../pearallel.sh
-	../pearallel.sh $(RAW_DATA)/bc_map/clearpPeakTiling_82_combined $(MERGE_DEST)
+	../pearallel.sh $(RAW_DATA)/bc_map/pPeakTiling_82_combined $(MERGE_DEST)
 
 
 $(MERGE_DEST)/pPeakTiling_83_combined.paired.assembled.fastq: $(RAW_DATA)/bc_map/pPeakTiling_83_combined_R1.fastq.gz \
