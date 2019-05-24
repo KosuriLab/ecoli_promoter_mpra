@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from __future__ import division
+import timeit
 import sys
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
@@ -200,7 +201,8 @@ if __name__ == '__main__':
     parser.add_argument('count_cutoff', type=int, nargs='?', const=0, help='Minimum k-mer count to count as feature')
 
     args = parser.parse_args()
-
+    
+    count_cutoff = args.count_cutoff
     sequences, y_train = read_file(args.train)
     print 'loaded training data'
     test_sequences, y_test = read_file(args.test)
@@ -208,7 +210,7 @@ if __name__ == '__main__':
 
     X_train_all = pd.DataFrame()
     X_test_all = pd.DataFrame()
-    for k in range(args.min_k, args.max_k):
+    for k in range(args.min_k, args.max_k+1):
     # for k in range(min_k, max_k+1):
         print "Train:"
         X_train, relevant_kmers = generate_filtered_kmer_counts(sequences, k, cutoff=count_cutoff)
@@ -221,10 +223,10 @@ if __name__ == '__main__':
     print 'generated features'
     # remove mean and scale to unit variance
     scaler = StandardScaler()
-    scaler.fit(X_train)
-    X_train_features = scaler.transform(X_train)
-    X_test_features = scaler.transform(X_test)
-    predictions = predict(X_train, y_train, X_test)
+    scaler.fit(X_train_all)
+    X_train_features = scaler.transform(X_train_all)
+    X_test_features = scaler.transform(X_test_all)
+    predictions = predict(X_train_features, y_train, X_test_features)
 
     print 'predicted expression'
 
