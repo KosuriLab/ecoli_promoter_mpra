@@ -96,7 +96,13 @@ ggsave('../../figs/fig1/tss_replicate_corr.pdf', units = 'in', width = 7.29, hei
 Figure 1D, distributions of promoter activity and expression threshold
 
 ```{r}
-ggplot(Endo2, aes(expn_med)) +
+rrsE<- c('TSS_16491_storz,4205882,+', 'TSS_16492_regulondb,4205994,+', 'TSS_16493_regulondb,4206055,+')
+
+PrrsE <- Endo2$expn_med_fitted_scaled[Endo2$name %in% rrsE]
+mid_PrrsE <- mean(PrrsE)
+rm(rrsE)
+
+ggplot(Endo2, aes(expn_med_fitted_scaled)) +
       geom_histogram(color = 'blue', fill = 'blue', alpha = .2, bins = 100) +
       geom_histogram(data=neg, aes(expn_med_fitted_scaled), color = 'red', fill = 'red', alpha = .2, bins = 100) +
       scale_x_log10(limits = c(0.35,100)) +
@@ -104,7 +110,9 @@ ggplot(Endo2, aes(expn_med)) +
       annotation_logticks(sides = 'bl') +
       annotate("text", x= 4, y = 3000, label = "Active Threshold", size = 8) +
       geom_vline(xintercept = threshold, linetype = 'dashed') +
-      labs(x = 'rLP5 Expression', y = 'Count') +
+      geom_point(data=as.data.frame(PrrsE), aes(y = 10, x = PrrsE), shape = 25) + 
+      annotate('text', x = mid_PrrsE, y = 16, label = 'PrrsE', fontface = 'italic', size = 6) +
+       labs(x = 'rLP5 Expression', y = 'Count', title = 'Identifying Active Promoter Threshold') +
       theme(axis.text.x = element_text(size=24), 
         axis.text.y = element_text(size=24),
         axis.title.x.bottom = element_text(size = 24),
