@@ -294,25 +294,6 @@ ggsave('../../figs/fig1/tss_promoter_scores.pdf', units = 'in', width = 9.06, he
 ```
 
 
-```{r}
-# use motif scores to classify sequences and form PR curves
-minus35_prc <- PRROC::pr.curve(scores.class0 = Endo2_stats$minus35_max_score[Endo2_stats$active == 'active'],
-                scores.class1 = Endo2_stats$minus35_max_score[Endo2_stats$active == 'inactive'],
-                curve = T)
-plot(minus35_prc)
-```
-
-```{r}
-minus10_prc <- PRROC::pr.curve(scores.class0 = Endo2_stats$minus10_max_score[Endo2_stats$active == 'active'],
-                scores.class1 = Endo2_stats$minus10_max_score[Endo2_stats$active == 'inactive'],
-                curve = T)
-plot(minus10_prc)
-```
-
-```{r}
-active <- Endo2_stats$minus35_max_score[Endo2_stats$active == 'active']
-inactive <- Endo2_stats$minus35_max_score[Endo2_stats$active == 'inactive']
-```
 
 
 
