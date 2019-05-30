@@ -63,6 +63,7 @@ def find_max(regions, wig):
 			start, end, score_sum = regions.pop(0)
 			max_value = -1
 			max_position = None
+			new_score_sum = 0
 
 	return regions_with_max
 
