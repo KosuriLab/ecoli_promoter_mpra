@@ -196,8 +196,8 @@ if __name__ == '__main__':
     parser.add_argument('train', help='Filename of training set')
     parser.add_argument('test', help='Filename of test set')
     parser.add_argument('output_name', help='Filename of output')
-    parser.add_argument('max_k', type=int, help='Max k-mer length')
-    parser.add_argument('min_k', type=int, nargs='?', const=1, help='Minimum k-mer length')
+    parser.add_argument('min_k', type=int, help='Minimum k-mer length')
+    parser.add_argument('max_k', type=int, help='Maximum k-mer length')
     parser.add_argument('count_cutoff', type=int, nargs='?', const=0, help='Minimum k-mer count to count as feature')
 
     args = parser.parse_args()

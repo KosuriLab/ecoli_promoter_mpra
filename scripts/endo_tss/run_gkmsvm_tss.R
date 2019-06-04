@@ -1,9 +1,3 @@
----
-title: "R Notebook"
-output: html_notebook
----
-
-```{r}
 # source('https://bioconductor.org/biocLite.R')
 # biocLite('GenomicRanges')
 # biocLite('rtracklayer')
@@ -45,13 +39,13 @@ gkmsvm_kernel(posfile = "../../processed_data/endo_tss/lb/model_files/tss_train_
 
 # perform SVM training with cross-validation
 result <- gkmsvm_trainCV(kernelfn = '../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernel',
-               posfn= "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_positives.fasta", 
-               negfn = "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_negatives.fasta",
-               svmfnprfx='.../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernell', 
-               outputCVpredfn='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_cvpred',
-               outputROCfn='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_roc', 
-               L = 10, K = 8, showPlots = T, 
-               outputPDFfn = '../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_curves')
+                         posfn= "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_positives.fasta", 
+                         negfn = "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_negatives.fasta",
+                         svmfnprfx='.../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernell', 
+                         outputCVpredfn='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_cvpred',
+                         outputROCfn='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_roc', 
+                         L = 10, K = 8, showPlots = T, 
+                         outputPDFfn = '../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_curves')
 
 ggsave('../../processed_data/endo_tss/lb/model_files/gkmsvm_s10mer_8ungapped_ROC_PR_curves.png')
 
@@ -61,9 +55,3 @@ ggsave('../../processed_data/endo_tss/lb/model_files/gkmsvm_s10mer_8ungapped_ROC
 #                 svmfnprfx = '../processed_data/gkmsvm_results/promoter_svm_10mer_8ungapped_top10pct_300bp.out',
 #                 outfile = '../processed_data/gkmsvm_results/all_10mers_classified_12mer_8ungapped_top10pct_300bp.txt',
 #                 L = 10, K = 8)
-
-
-
-```
-
-
