@@ -178,6 +178,9 @@ if __name__ == '__main__':
 						# else, don't write to output
 	else:
 		# write FASTA file
+		outfile_test_pos = open(test_prefix + '_test_genome_split_positives.fasta', 'w')
+		outfile_test_neg = open(test_prefix + '_test_genome_split_negatives.fasta', 'w')
+		# general file not split into positive/negative
 		outfile_test = open(test_prefix + '_test_genome_split.fasta', 'w')
 		for i in range(len(test)):
 			x = test.start.iloc[i]
@@ -188,7 +191,16 @@ if __name__ == '__main__':
 			for j in range(len(splits)):
 				if in_range(splits[j], x, y):
 					if split_lookup[splits[j]] == 'test':
-						if value < args.neg_threshold or value >= args.pos_threshold:
+						if value < args.neg_threshold:
+							outfile_test_neg.write('>' + name + '\n')
+							outfile_test_neg.write(seq + '\n')
+
+							outfile_test.write('>' + name + '\n')
+							outfile_test.write(seq + '\n')
+						elif value >= args.pos_threshold:
+							outfile_test_pos.write('>' + name + '\n')
+							outfile_test_pos.write(seq + '\n')
+
 							outfile_test.write('>' + name + '\n')
 							outfile_test.write(seq + '\n')
 		outfile_test.close()
