@@ -119,3 +119,12 @@ write.table(flp3, file = '../processed_data/endo_tss/alt_landing_pads/fLP3/fLP3_
             row.names = F, quote = F, sep = '\t')
 write.table(rlp6, file = '../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_Endo2_lb_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')
+
+# combine datasets for modeling
+combined <- bind_rows(tss, scramble, peak_tile) %>% 
+    select(variant, expn_med_fitted_scaled, start, end, name)
+write.table(combined, '../processed_data/combined/tss_scramble_peak_expression_model_format.txt',
+            row.names = F, col.names = F, quote = F, sep = '\t')
+write.table(select(combined, variant, expn_med_fitted_scaled), 
+            '../processed_data/combined/tss_scramble_peak_expression_model_format_values_only.txt',
+            row.names = F, col.names = F, quote = F, sep = '\t')
