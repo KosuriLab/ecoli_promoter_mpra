@@ -11,7 +11,7 @@ if [ $model_type == 'regression' ]; then
 fi
 
 if [ $model_type == 'classification' ]; then
-	python dragonn_hyperparameter_tuning_regression.py \
+	python dragonn_hyperparameter_tuning.py \
 	../../processed_data/combined/tss_scramble_peak_expression_model_format_train_genome_split_positives.fasta \
 	 ../../processed_data/combined/tss_scramble_peak_expression_model_format_train_genome_split_negatives.fasta \
 	 150 4 5 100 0.2 100 \
