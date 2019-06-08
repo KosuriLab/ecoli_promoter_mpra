@@ -32,6 +32,17 @@ def reverse_complement(encoded_seqs):
     return encoded_seqs[..., ::-1, ::-1]
 
 
+def pad_sequence(seq, max_length):
+	if len(seq) > max_length:
+		diff = len(seq) - max_length
+		# diff%2 returns 1 if odd
+		trim_length = int(diff / 2)
+		seq = seq[trim_length : -(trim_length + diff%2)]
+	else:
+		seq = seq.center(max_length, 'N')
+
+	return seq
+
 # def encode_trim_pad_fasta_sequences(fname, max_length):
 #     """
 #     One hot encodes sequences in fasta file. If sequences are too long, they will
@@ -85,10 +96,11 @@ def reverse_complement(encoded_seqs):
 # 	return [X, y]
 
 
-def process_seqs(filename):
+def process_seqs(filename, seq_length):
 
 	df = pd.read_csv(filename, header=None, names=['sequence', 'label'], sep='\t')
-	X = one_hot_encode(np.array(df['sequence'].tolist()))
+	padded_seqs = [pad_sequence(x, seq_length) for x in df['sequence'].tolist()]
+	X = one_hot_encode(np.array(padded_seqs))
 	y = np.array(df['label'])
 	return [X, y]
 
@@ -125,12 +137,12 @@ if __name__ == '__main__':
 	# read in sequences and labels
 	print("loading sequence data...")
 
-	X_train, y_train = process_seqs(args.train)
+	X_train, y_train = process_seqs(args.train, seq_length)
 
 	X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train, 
 		test_size=validation_fraction)
 
-	X_test, y_test = process_seqs(args.test)
+	X_test, y_test = process_seqs(args.test, seq_length)
 	
 	print('Starting hyperparameter search...')
 
