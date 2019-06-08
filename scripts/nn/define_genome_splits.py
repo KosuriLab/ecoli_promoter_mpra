@@ -138,8 +138,7 @@ if __name__ == '__main__':
 						# else, don't write to output
 	else:
 		# write file for positives and negatives according to threshold
-		outfile_train_pos = open(train_prefix + '_train_genome_split_positives.fasta', 'w')
-		outfile_train_neg = open(train_prefix + '_train_genome_split_negatives.fasta', 'w')
+		outfile_train = open(train_prefix + '_train_genome_split_classification.txt', 'w')
 		for i in range(len(train)):
 			 x = train.start.iloc[i]
 			 y = train.end.iloc[i]
@@ -151,15 +150,12 @@ if __name__ == '__main__':
 				if in_range(splits[j], x, y):
 					if split_lookup[splits[j]] == 'train':
 						if value < args.neg_threshold:
-							outfile_train_neg.write('>' + name + '\n')
-							outfile_train_neg.write(seq + '\n')
+							label = '0'
+							outfile_train.write(seq + '\t' + label + '\n')
 						elif value >= args.pos_threshold:
-							outfile_train_pos.write('>' + name + '\n')
-							outfile_train_pos.write(seq + '\n')
-		outfile_train_pos.close()
-		outfile_train_neg.close()
-
-
+							label = '1'
+							outfile_train.write(seq + '\t' + label + '\n')
+		outfile_train.close()
 
 	# For test, only sequences that fall into test splits will be written
 	if not args.classification:
@@ -176,34 +172,25 @@ if __name__ == '__main__':
 							outfile_test.write(test.variant.iloc[i] + '\t')
 							outfile_test.write(str(test.expn_med_fitted_scaled.iloc[i]) + '\n')
 						# else, don't write to output
-	else:
-		# write FASTA file
-		outfile_test_pos = open(test_prefix + '_test_genome_split_positives.fasta', 'w')
-		outfile_test_neg = open(test_prefix + '_test_genome_split_negatives.fasta', 'w')
-		# general file not split into positive/negative
-		outfile_test = open(test_prefix + '_test_genome_split.fasta', 'w')
+	else:	
+		outfile_test = open(test_prefix + '_test_genome_split_classification.txt', 'w')
 		for i in range(len(test)):
+			
 			x = test.start.iloc[i]
 			y = test.end.iloc[i]
 			value = test.expn_med_fitted_scaled.iloc[i]
 			name = test.name.iloc[i]
 			seq = test.variant.iloc[i]
+			
 			for j in range(len(splits)):
 				if in_range(splits[j], x, y):
 					if split_lookup[splits[j]] == 'test':
+						
 						if value < args.neg_threshold:
-							outfile_test_neg.write('>' + name + '\n')
-							outfile_test_neg.write(seq + '\n')
-
-							outfile_test.write('>' + name + '\n')
-							outfile_test.write(seq + '\n')
+							label = '0'
+							outfile_test.write(seq + '\t' + label + '\n')
 						elif value >= args.pos_threshold:
-							outfile_test_pos.write('>' + name + '\n')
-							outfile_test_pos.write(seq + '\n')
+							label = '1'
+							outfile_test.write(seq + '\t' + label + '\n')
 
-							outfile_test.write('>' + name + '\n')
-							outfile_test.write(seq + '\n')
 		outfile_test.close()
-
-
-

@@ -14,6 +14,28 @@ import sys
 import argparse
 
 
+def fasta_reader(filename):
+
+	seqs = {}
+
+	with open(filename) as infile:
+		seq = ''
+		for line in infile:
+			if line.startswith('>'):
+				if len(seq) != 0:
+					seqs[name] = seq
+				
+				name = line.strip()[1:] # remove leading '>'
+				seq = ''
+			else:
+				seq += line.strip()
+
+		# catch last sequence
+		if len(seq) != 0:
+			seqs[name] = seq
+
+	return seqs
+	
 
 def one_hot_encode(sequences):
     sequence_length = len(sequences[0])
