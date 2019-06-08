@@ -25,116 +25,6 @@ def read_file(dataset_filename):
     return sequences, expression
 
 
-# def read_test_file(test_dataset_filename):
-#     """
-#     Load names and sequences for test data
-#     """
-#     sequences = []
-#     names = []
-#     with open(test_dataset_filename, 'r') as test_f:
-#         for line in test_f:
-#             data = (line.strip('\n')).split('\t')
-#             sequence, expression = data[:]
-#             names.append(name)
-#             sequences.append(sequence)
-#     return sequences, names
-
-
-# def gen_dict(keys):
-#     """
-#     Generate dictionary given list of keys
-#     """
-#     kmer_dict = dict()
-#     for key in keys:
-#         kmer_dict[key] = 0
-#     return kmer_dict
-
-
-# def find_kmers(pos_kmers, string, k):
-#     """
-#     Count instances of kmers in sequence string
-#     """
-#     kmer_dict = gen_dict(pos_kmers)
-#     str_length = len(string)
-#     kmers = [string[i:i+k] for i in range(0, str_length-k+1)]
-#     kmer_dict = dict(Counter(kmers))
-
-#     return kmer_dict
-
-
-# def find_rel_kmers(sequences, k, count_cutoff, use_cutoff):
-#     """
-#     Get kmer strings in training data meeting cutoff
-#     """
-#     kmer_dict = dict()
-#     for seq in sequences:
-#         seq_len = len(seq)
-#         kmers = [seq[i:i+k] for i in range(0, seq_len-k+1)]
-#         for kmer in kmers:
-#             if kmer in kmer_dict:
-#                 kmer_dict[kmer] += 1
-#             else:
-#                 kmer_dict[kmer] = 1
-#     if use_cutoff:
-#         cutoff = count_cutoff
-#         print("cutoff", cutoff)
-#         rel_kmer = []
-#         for kmer in kmer_dict:
-#             if kmer_dict[kmer] >= cutoff:
-#                 rel_kmer.append(kmer)
-#         return rel_kmer
-#     else:
-#         return sorted(kmer_dict.keys())
-
-
-# def find_relevant_kmers(sequences, k, count_cutoff):
-#     """
-#     Get kmer strings in sequences above cutoff
-#     """
-
-#     kmer_counter = Counter()
-#     for seq in sequences:
-#         seq_len = len(seq)
-#         kmers = [seq[i:i+k] for i in range(seq_len-k+1)]
-#         kmer_counter.update(Counter(kmers))
-
-#     rel_kmers = [x for x in kmer_counter if kmer_counter[x] >= count_cutoff]
-#     return sorted(rel_kmers)
-
-
-# def gen_features_kmers(sequences, k_min, k_max, test_sequences, count_cutoff):
-    
-#     """
-#     Generate features from kmers
-#     """
-
-#     features = [[] for i in range(len(sequences))]
-#     test_features = [[] for i in range(len(test_sequences))]
-#     for k in range(k_min, k_max + 1):
-#         relevant_kmers = find_relevant_kmers(sequences, k, count_cutoff)
-#         print("k: ", k, ", len: ", len(relevant_kmers))
-        
-#         for idx, seq in enumerate(sequences):
-#             kmer_dict = find_kmers(relevant_kmers, seq, k)
-#             # for kmer in relevant_kmers:
-#             # features[idx].append(kmer_dict[kmer])
-#             sorted_kmer_counts = [kmer_dict.get(kmer, 0) for kmer in relevant_kmers]
-#             features[idx] = sorted_kmer_counts
-
-#         print "Created train features"
-                
-#         for idx, seq in enumerate(test_sequences):
-#             kmer_dict = find_kmers(relevant_kmers, seq, k)
-#             # for kmer in relevant_kmers:
-#             #     test_features[idx].append(kmer_dict[kmer])
-#             sorter_kmer_counts = [kmer_dict.get(kmer, 0) for kmer in relevant_kmers]
-#             test_features[idx] = sorted_kmer_counts
-
-#         print "Created test features"
-
-#     return features, test_features
-
-
 def generate_filtered_kmer_counts(sequences, k, relevant_kmers=None, cutoff=None):
     
     # all_kmers = [''.join(x) for x in itertools.product(['A', 'C', 'G', 'T'], repeat=k)]
@@ -183,12 +73,6 @@ def predict(features, expression, test_features):
                 predictions = clf.predict(test_features)
 
     return predictions
-                # file_object = open(out_filename, "w")
-                # line = "name\texpression\n"
-                # file_object.write(line)
-                # for idx, prediction in enumerate(predictions):
-                #     line = '\t'.join([test_sequences[idx], str(prediction)]) + "\n"
-                #     file_object.write(line)
 
 
 if __name__ == '__main__':
