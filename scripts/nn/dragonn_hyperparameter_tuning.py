@@ -12,29 +12,6 @@ from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.metrics import roc_curve, precision_recall_curve
 import sys
 import argparse
-
-
-def fasta_reader(filename):
-
-	seqs = {}
-
-	with open(filename) as infile:
-		seq = ''
-		for line in infile:
-			if line.startswith('>'):
-				if len(seq) != 0:
-					seqs[name] = seq
-				
-				name = line.strip()[1:] # remove leading '>'
-				seq = ''
-			else:
-				seq += line.strip()
-
-		# catch last sequence
-		if len(seq) != 0:
-			seqs[name] = seq
-
-	return seqs
 	
 
 def one_hot_encode(sequences):
@@ -54,56 +31,64 @@ def reverse_complement(encoded_seqs):
     return encoded_seqs[..., ::-1, ::-1]
 
 
-def encode_trim_pad_fasta_sequences(fname, max_length):
-    """
-    One hot encodes sequences in fasta file. If sequences are too long, they will
-    be trimmed to the center. If too short, they will be padded with Ns
-    """
-    name, seq_chars = None, []
-    sequences = []
-    with open(fname) as fp:
-        for line in fp:
-            line = line.rstrip()
-            if line.startswith(">"):
-                if name:
-                	seq = ''.join(seq_chars).upper()
-                	# this will center the string, and pad with Ns
-                	if len(seq) > max_length:
-                		diff = len(seq) - max_length
-                		# diff%2 returns 1 if odd
-                		trim_length = int(diff / 2)
-                		seq = seq[trim_length : -(trim_length + diff%2)]
-                	else:
-                		seq = seq.center(max_length, 'N')
-                	sequences.append(seq)
-                name, seq_chars = line, []
-            else:
-                seq_chars.append(line)
-    if name is not None:
-    	seq = ''.join(seq_chars).upper()
-    	# this will center the string, and pad with Ns
-    	if len(seq) > max_length:
-    		diff = len(seq) - max_length
-    		# diff%2 returns 1 if odd
-    		trim_length = int(diff / 2)
-    		seq = seq[trim_length : -(trim_length + diff%2)]
-    	else:
-    		seq = seq.center(max_length, 'N')
-        sequences.append(seq)
+# def encode_trim_pad_fasta_sequences(fname, max_length):
+#     """
+#     One hot encodes sequences in fasta file. If sequences are too long, they will
+#     be trimmed to the center. If too short, they will be padded with Ns
+#     """
+#     name, seq_chars = None, []
+#     sequences = []
+#     with open(fname) as fp:
+#         for line in fp:
+#             line = line.rstrip()
+#             if line.startswith(">"):
+#                 if name:
+#                 	seq = ''.join(seq_chars).upper()
+#                 	# this will center the string, and pad with Ns
+#                 	if len(seq) > max_length:
+#                 		diff = len(seq) - max_length
+#                 		# diff%2 returns 1 if odd
+#                 		trim_length = int(diff / 2)
+#                 		seq = seq[trim_length : -(trim_length + diff%2)]
+#                 	else:
+#                 		seq = seq.center(max_length, 'N')
+#                 	sequences.append(seq)
+#                 name, seq_chars = line, []
+#             else:
+#                 seq_chars.append(line)
+#     if name is not None:
+#     	seq = ''.join(seq_chars).upper()
+#     	# this will center the string, and pad with Ns
+#     	if len(seq) > max_length:
+#     		diff = len(seq) - max_length
+#     		# diff%2 returns 1 if odd
+#     		trim_length = int(diff / 2)
+#     		seq = seq[trim_length : -(trim_length + diff%2)]
+#     	else:
+#     		seq = seq.center(max_length, 'N')
+#         sequences.append(seq)
 
-    return one_hot_encode(np.array(sequences))
+#     return one_hot_encode(np.array(sequences))
 
 
-def process_seqs(filename, seq_length, activity_type):
+# def process_seqs(filename, seq_length, activity_type):
 
-	X = encode_trim_pad_fasta_sequences(filename, seq_length)
-	if activity_type == 'active':
-		y = np.array([[True]]*len(X))
-	elif activity_type == 'inactive':
-		y = np.array([[False]]*len(X))
-	else:
-		raise ValueException('Please specify activity type: active or inactive')
+# 	X = encode_trim_pad_fasta_sequences(filename, seq_length)
+# 	if activity_type == 'active':
+# 		y = np.array([[True]]*len(X))
+# 	elif activity_type == 'inactive':
+# 		y = np.array([[False]]*len(X))
+# 	else:
+# 		raise ValueException('Please specify activity type: active or inactive')
 
+# 	return [X, y]
+
+
+def process_seqs(filename):
+
+	df = pd.read_csv(filename, header=None, names=['sequence', 'label'], sep='\t')
+	X = one_hot_encode(np.array(df['sequence'].tolist()))
+	y = np.array(df['label'])
 	return [X, y]
 
 
@@ -112,10 +97,10 @@ num_epochs = 100
 if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
-	parser.add_argument('pos_train', help='fasta file of positive sequences, train')
-	parser.add_argument('neg_train', help='fasta file of negative sequences, train')
-	parser.add_argument('pos_test', help='fasta file of positive sequences, test')
-	parser.add_argument('neg_test', help='fasta file of negative sequences, test')
+	parser.add_argument('train', help='''tab-separated, first column sequence, 
+		second column label''')
+	parser.add_argument('test', help='''tab-separated, first column sequence, 
+		second column label''')
 
 	parser.add_argument('seq_length', type=int, help='length of input sequences, or max length for trimming/padding sequences')
 	parser.add_argument('num_layers', type=int, help='number of convolutional layers')
@@ -127,10 +112,6 @@ if __name__ == '__main__':
 	parser.add_argument('prefix', help='output prefix for saved model files')
 	args = parser.parse_args()
 
-	pos_train = args.pos_train
-	neg_train = args.neg_train
-	pos_test = args.pos_test
-	neg_test = args.neg_test
 
 	seq_length = args.seq_length
 	num_layers = args.num_layers
@@ -143,18 +124,12 @@ if __name__ == '__main__':
 	# read in sequences and labels
 	print("loading sequence data...")
 
-	X_pos, y_pos = process_seqs(args.pos_train, seq_length, 'active')
-	X_neg, y_neg = process_seqs(args.neg_train, seq_length, 'inactive')
-	X_train = np.concatenate((X_pos, X_neg))
-	y_train = np.concatenate((y_pos, y_neg))
+	X_train, y_train = process_seqs(args.train)
 
 	X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train, 
 		test_size=validation_fraction)
 
-	X_pos_test, y_pos_test = process_seqs(args.pos_test, seq_length, 'active')
-	X_neg_test, y_neg_test = process_seqs(args.neg_test, seq_length, 'inactive')
-	X_test = np.concatenate((X_pos_test, X_neg_test))
-	y_test = np.concatenate((y_pos_test, y_neg_test))
+	X_test, y_test = process_seqs(args.test)
 	
 	print('Starting hyperparameter search...')
 
@@ -198,23 +173,9 @@ if __name__ == '__main__':
 			outfile.write(str(fpr[i]) + ',' + str(tpr[i]) + ',' + str(thresholds[i]) + '\n')
 
 	precision, recall, thresholds = precision_recall_curve(y_test, predictions)
-#	print(len(precision), len(recall), len(thresholds))
 	with open(prefix + '_pr_info.txt', 'w') as outfile:
 		for i in range(len(thresholds)):
 			outfile.write(str(precision[i]) + ',' + str(recall[i]) + ',' + str(thresholds[i]) + '\n')
 
-
-	# # extract sequences for prediction file
-	# test_sequences = np.concatenate((
-	# 	encode_trim_pad_fasta_sequences(args.pos_test, 150),
-	# 	encode_trim_pad_fasta_sequences(args.neg_test, 150)))
-
-	
-	# with open(prefix + '_predictions.txt', 'w') as outfile:
-	# 	for i in range(len(predictions)):
-	# 		outfile.write(
-	# 			test_sequences[i] + '\t' + 
-	# 			predictions[i] + '\t' + 
-	# 			y_test[i] + '\n')
 
 
