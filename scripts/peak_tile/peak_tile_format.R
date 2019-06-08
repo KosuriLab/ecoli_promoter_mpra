@@ -31,5 +31,9 @@ data <- data %>%
     mutate(tile_start = as.numeric(tile_start),
            tile_start_relative = tile_start/peak_length)
 
+data <- data %>% 
+    mutate(start = peak_start + tile_start,
+           end = peak_end + tile_end)
+
 write.table(data, file = '../../processed_data/peak_tile/peak_tile_expression_formatted.txt',
             quote = F, row.names = F, sep = '\t')

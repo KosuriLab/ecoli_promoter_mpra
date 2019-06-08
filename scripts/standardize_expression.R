@@ -121,8 +121,12 @@ write.table(rlp6, file = '../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_
             row.names = F, quote = F, sep = '\t')
 
 # combine datasets for modeling
-combined <- bind_rows(tss, scramble, peak_tile) %>% 
+combined <- bind_rows(tss, 
+                      select(scramble, variant, expn_med_fitted_scaled,
+                             start=var_left, end=var_right, name),
+                      peak_tile) %>% 
     select(variant, expn_med_fitted_scaled, start, end, name)
+
 write.table(combined, '../processed_data/combined/tss_scramble_peak_expression_model_format.txt',
             row.names = F, col.names = F, quote = F, sep = '\t')
 write.table(select(combined, variant, expn_med_fitted_scaled), 
