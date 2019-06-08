@@ -147,7 +147,7 @@ if __name__ == '__main__':
 			 seq = train.variant.iloc[i]
 
 			 for j in range(len(splits)):
-				if in_range(splits[j], x, y):
+			 	if in_range(splits[j], x, y):
 					if split_lookup[splits[j]] == 'train':
 						if value < args.neg_threshold:
 							label = '0'
@@ -192,5 +192,4 @@ if __name__ == '__main__':
 						elif value >= args.pos_threshold:
 							label = '1'
 							outfile_test.write(seq + '\t' + label + '\n')
-
 		outfile_test.close()
