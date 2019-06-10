@@ -1,0 +1,29 @@
+DATE=`date +%Y%m%d`
+DIR=../../processed_data/combined
+
+# define genome splits
+split: ./run_splits.sh regression
+
+# create 6-mer counts feature file for random forest
+kmer: 
+	@ Rscript create_kmer_counts.R \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split_kmer_counts.txt
+	@ Rscript create_kmer_counts.R \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split_kmer_counts.txt
+
+
+# runs best on GPUs
+nn: ./run_nn.sh regression
+
+
+# run MLP for 3 to 6-mers
+mlp_3to6:
+	python mlp_kmer.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
+	$(DIR)/${DATE}_mlp_tss_3to6mer_scramble_peak_predictions.txt 3 6 100
+
+
+print-%  : ; @echo $* = $($*)

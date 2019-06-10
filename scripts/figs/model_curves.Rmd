@@ -352,7 +352,7 @@ mlp_accuracy
 
 
 ```{r}
-mlp_3to6 <- read.table('../../processed_data/combined/mlp_tss_3to6mer_scramble_peak_predictions.txt',
+mlp_3to6 <- read.table('../../processed_data/combined/20190608_mlp_tss_3to6mer_scramble_peak_predictions.txt',
                        col.names = c('predicted', 'observed'))
 r.squared_mlp_3to6 <- summary(lm(observed ~ predicted, mlp_3to6))$r.squared
 ggplot(mlp_3to6, aes(predicted, observed)) + geom_point() +
