@@ -2,7 +2,8 @@ DATE=`date +%Y%m%d`
 DIR=../../processed_data/combined
 
 # define genome splits
-split: ./run_splits.sh regression
+split: 
+	./run_splits.sh regression
 
 # create 6-mer counts feature file for random forest
 kmer: 
@@ -15,7 +16,8 @@ kmer:
 
 
 # runs best on GPUs
-nn: ./run_nn.sh regression
+nn: 
+	./run_nn.sh regression
 
 
 # run MLP for 3 to 6-mers

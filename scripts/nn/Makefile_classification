@@ -2,7 +2,8 @@ DATE=`date +%Y%m%d`
 DIR=../../processed_data/combined
 
 # define genome splits
-split: ./run_splits.sh classification
+split: 
+	./run_splits.sh classification
 
 # create 6-mer counts feature file for random forest
 kmer: 
@@ -14,6 +15,7 @@ kmer:
 	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification_kmer_counts.txt
 
 # runs best on GPUs
-nn: ./run_nn.sh classification
+nn: 
+	./run_nn.sh classification
 
 print-%  : ; @echo $* = $($*)
