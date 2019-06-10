@@ -2,8 +2,10 @@ DATE=`date +%Y%m%d`
 DIR=../../processed_data/combined
 
 # define genome splits
-split: 
-	bash ./run_splits.sh regression
+split:
+	python define_genome_splits.py 0.75 4639675 \
+	$(DIR)/tss_scramble_peak_expression_model_format.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format.txt --floor
 
 # create 6-mer counts feature file for random forest
 kmer: 
@@ -17,7 +19,12 @@ kmer:
 
 # runs best on GPUs
 nn: 
-	bash ./run_nn.sh regression
+	python dragonn_hyperparameter_tuning_regression.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
+	150 4 5 100 0.2 100 \
+	$(DIR)/$(DATE)_tss_scramble_peak_regression_hyperparam_tuned > \
+	$(DIR)/$(DATE)_tss_scramble_peak_regression_hyperparam_tuned.log
 
 
 rf_kmer: 
@@ -35,12 +42,19 @@ rf_onehot:
 	--onehot --seq_length 150 --regression
 
 
+mlp_6mer:
+	python mlp_kmer.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
+	$(DIR)/$(DATE)_mlp_tss_scramble_peak_predictions.txt 6 6 100 --regression
+
+
 # run MLP for 3 to 6-mers
 mlp_3to6:
 	python mlp_kmer.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
-	$(DIR)/${DATE}_mlp_tss_3to6mer_scramble_peak_predictions.txt 3 6 100
+	$(DIR)/$(DATE)_mlp_tss_3to6mer_scramble_peak_predictions.txt 3 6 100 --regression
 
 
 print-%  : ; @echo $* = $($*)
