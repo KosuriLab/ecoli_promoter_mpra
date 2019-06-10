@@ -1,15 +1,19 @@
-# # define genome splits
-# ./run_splits.sh classification
+DATE=`date +%Y%m%d`
+DIR=../../processed_data/combined
 
-# # run neural network (works best on GPUs)
-# ./run_nn.sh classification
+# define genome splits
+split: ./run_splits.sh classification
 
-# create k-mer counts
-Rscript create_kmer_counts.R \
-../../processed_data/combined/tss_scramble_peak_expression_model_format_train_genome_split_classification.txt \
-../../processed_data/combined/tss_scramble_peak_expression_model_format_train_genome_split_classification_kmer_counts.txt
+# create 6-mer counts feature file for random forest
+kmer: 
+	@ Rscript create_kmer_counts.R \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_kmer_counts.txt
+	@ Rscript create_kmer_counts.R \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification_kmer_counts.txt
 
-Rscript create_kmer_counts.R \
-../../processed_data/combined/tss_scramble_peak_expression_model_format_test_genome_split_classification.txt \
-../../processed_data/combined/tss_scramble_peak_expression_model_format_test_genome_split_classication_kmer_counts.txt
+# runs best on GPUs
+nn: ./run_nn.sh classification
 
+print-%  : ; @echo $* = $($*)

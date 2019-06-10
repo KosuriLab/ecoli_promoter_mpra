@@ -180,15 +180,22 @@ if __name__ == '__main__':
 	# predictions
 	predictions = model.predict(X_test)
 
-	fpr, tpr, thresholds = roc_curve(y_test, predictions)
-	with open(prefix + '_roc_info.txt', 'w') as outfile:
-		for i in range(len(fpr)):
-			outfile.write(str(fpr[i]) + ',' + str(tpr[i]) + ',' + str(thresholds[i]) + '\n')
+	with open(prefix + '_predictions.txt', 'w') as outfile:
+		for i in range(len(predictions)):
+			outfile.write(
+				str(float(predictions[i])) + '\t' + 
+				str(float(y_test[i])) + '\n')
 
-	precision, recall, thresholds = precision_recall_curve(y_test, predictions)
-	with open(prefix + '_pr_info.txt', 'w') as outfile:
-		for i in range(len(thresholds)):
-			outfile.write(str(precision[i]) + ',' + str(recall[i]) + ',' + str(thresholds[i]) + '\n')
+
+	# fpr, tpr, thresholds = roc_curve(y_test, predictions)
+	# with open(prefix + '_roc_info.txt', 'w') as outfile:
+	# 	for i in range(len(fpr)):
+	# 		outfile.write(str(fpr[i]) + ',' + str(tpr[i]) + ',' + str(thresholds[i]) + '\n')
+
+	# precision, recall, thresholds = precision_recall_curve(y_test, predictions)
+	# with open(prefix + '_pr_info.txt', 'w') as outfile:
+	# 	for i in range(len(thresholds)):
+	# 		outfile.write(str(precision[i]) + ',' + str(recall[i]) + ',' + str(thresholds[i]) + '\n')
 
 
 
