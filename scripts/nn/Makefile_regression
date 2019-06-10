@@ -17,7 +17,7 @@ kmer:
 
 # runs best on GPUs
 nn: 
-	./run_nn.sh regression
+	bash ./run_nn.sh regression
 
 
 # run MLP for 3 to 6-mers
