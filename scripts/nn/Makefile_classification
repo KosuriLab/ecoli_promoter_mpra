@@ -18,4 +18,19 @@ kmer:
 nn: 
 	bash ./run_nn.sh classification
 
+
+rf_kmer: 
+	python random_forest.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_kmer_counts.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification_kmer_counts.txt \
+	$(DIR)/$(DATE)_rf_tss_scramble_peak_classification_predictions.txt --classification
+
+
+rf_onehot:
+	python random_forest.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification.txt \
+	$(DIR)/$(DATE)_rf_onehot_tss_scramble_peak_classification_predictions.txt \
+	--onehot --seq_length 150 --classification
+
 print-%  : ; @echo $* = $($*)

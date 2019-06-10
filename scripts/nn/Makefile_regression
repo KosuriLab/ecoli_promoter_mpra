@@ -20,6 +20,21 @@ nn:
 	bash ./run_nn.sh regression
 
 
+rf_kmer: 
+	python random_forest.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split_kmer_counts.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split_kmer_counts.txt \
+	$(DIR)/$(DATE)_rfr_tss_scramble_peak_floored_predictions.txt --regression
+
+
+rf_onehot:
+	python random_forest.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
+	$(DIR)/$(DATE)_rfr_onehot_tss_scramble_peak_floored_predictions.txt \
+	--onehot --seq_length 150 --regression
+
+
 # run MLP for 3 to 6-mers
 mlp_3to6:
 	python mlp_kmer.py \
