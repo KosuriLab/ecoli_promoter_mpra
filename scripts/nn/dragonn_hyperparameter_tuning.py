@@ -101,8 +101,10 @@ def process_seqs(filename, seq_length):
 	df = pd.read_csv(filename, header=None, names=['sequence', 'label'], sep='\t')
 	padded_seqs = [pad_sequence(x, seq_length) for x in df['sequence'].tolist()]
 	X = one_hot_encode(np.array(padded_seqs))
-	y = np.array(df['label'])
-	return [X, y]
+	y = np.array(df['label']).reshape(len(df), 1)
+	# convert to bool
+	y_bool = y == 1
+	return [X, y_bool]
 
 
 num_epochs = 100
@@ -125,7 +127,8 @@ if __name__ == '__main__':
 	parser.add_argument('prefix', help='output prefix for saved model files')
 	args = parser.parse_args()
 
-
+	train = args.train
+	test = args.test
 	seq_length = args.seq_length
 	num_layers = args.num_layers
 	min_filter = args.min_filter
@@ -137,12 +140,12 @@ if __name__ == '__main__':
 	# read in sequences and labels
 	print("loading sequence data...")
 
-	X_train, y_train = process_seqs(args.train, seq_length)
+	X_train, y_train = process_seqs(train, seq_length)
 
 	X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train, 
 		test_size=validation_fraction)
 
-	X_test, y_test = process_seqs(args.test, seq_length)
+	X_test, y_test = process_seqs(test, seq_length)
 	
 	print('Starting hyperparameter search...')
 

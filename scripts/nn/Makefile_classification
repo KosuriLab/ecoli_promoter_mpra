@@ -3,7 +3,7 @@ DIR=../../processed_data/combined
 
 # define genome splits
 split: 
-	./run_splits.sh classification
+	bash ./run_splits.sh classification
 
 # create 6-mer counts feature file for random forest
 kmer: 
