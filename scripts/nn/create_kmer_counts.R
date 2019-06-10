@@ -1,3 +1,15 @@
+load_pkgs <- function(pkgs){
+    new_pkgs <- pkgs[!(pkgs %in% installed.packages()[, 'Package'])]
+    if(length(new_pkgs)) install.packages(new_pkgs)
+    for(pkg in pkgs){
+        suppressWarnings(suppressMessages(library(pkg, character.only = T)))
+    }
+}
+
+pkgs <- c('kmer', 'dplyr', 'seqinr')
+load_pkgs(pkgs)
+
+
 library(kmer)
 library(dplyr)
 library(seqinr)
