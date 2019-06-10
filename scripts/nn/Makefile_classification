@@ -16,6 +16,6 @@ kmer:
 
 # runs best on GPUs
 nn: 
-	./run_nn.sh classification
+	bash ./run_nn.sh classification
 
 print-%  : ; @echo $* = $($*)
