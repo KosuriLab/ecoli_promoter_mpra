@@ -3,11 +3,12 @@
 from __future__ import division
 import timeit
 import sys
-from sklearn.neural_network import MLPRegressor
+from sklearn.neural_network import MLPRegressor, MLPClassifier
 from sklearn.preprocessing import StandardScaler
 import argparse
 from collections import Counter
 import pandas as pd
+
 
 def read_file(dataset_filename):
     """
@@ -49,7 +50,7 @@ def generate_filtered_kmer_counts(sequences, k, relevant_kmers=None, cutoff=None
 
 
 
-def predict(features, expression, test_features):
+def predict_regression(features, expression, test_features):
     """
     Predict expression of test sequences
     """
@@ -75,6 +76,32 @@ def predict(features, expression, test_features):
     return predictions
 
 
+def predict_classification(features, expression, test_features):
+    """
+    Predict expression of test sequences
+    """
+    for a in [5e-3]:
+        for input_layer in [800]:
+            for hidden_layer in [30]:
+                print("alpha: ", a, 
+                    " input_layer: ", input_layer, 
+                    " hidden_layer: ", hidden_layer)
+                clf = MLPClassifier(solver="lbfgs", 
+                    alpha=a, 
+                    hidden_layer_sizes=(input_layer, hidden_layer), 
+                    random_state=1, 
+                    max_iter=10000, 
+                    verbose=False, 
+                    early_stopping=True, 
+                    learning_rate="adaptive", 
+                    tol=1e-8)
+
+                clf.fit(features, expression)
+                predictions = clf.predict(test_features)
+
+    return predictions
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('train', help='Filename of training set')
@@ -83,6 +110,8 @@ if __name__ == '__main__':
     parser.add_argument('min_k', type=int, help='Minimum k-mer length')
     parser.add_argument('max_k', type=int, help='Maximum k-mer length')
     parser.add_argument('count_cutoff', type=int, nargs='?', const=0, help='Minimum k-mer count to count as feature')
+    parser.add_argument('--regression', action='store_true')
+    parser.add_argument('--classification', action='store_true')
 
     args = parser.parse_args()
     
@@ -110,7 +139,10 @@ if __name__ == '__main__':
     scaler.fit(X_train_all)
     X_train_features = scaler.transform(X_train_all)
     X_test_features = scaler.transform(X_test_all)
-    predictions = predict(X_train_features, y_train, X_test_features)
+    if args.regression:
+        predictions = predict_regression(X_train_features, y_train, X_test_features)
+    if args.classification:
+        predictions = predict_classification(X_train_features, y_train, X_test_features)
 
     print 'predicted expression'
 

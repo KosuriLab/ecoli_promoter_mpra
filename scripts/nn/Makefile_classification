@@ -2,8 +2,11 @@ DATE=`date +%Y%m%d`
 DIR=../../processed_data/combined
 
 # define genome splits
-split: 
-	bash ./run_splits.sh classification
+split:
+	python define_genome_splits.py 0.75 4639675 \
+	$(DIR)/tss_scramble_peak_expression_model_format.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format.txt \
+	--classification --neg_threshold 0.75 --pos_threshold 1.25
 
 # create 6-mer counts feature file for random forest
 kmer: 
@@ -16,7 +19,12 @@ kmer:
 
 # runs best on GPUs
 nn: 
-	bash ./run_nn.sh classification
+	python dragonn_hyperparameter_tuning.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification.txt \
+	150 4 5 100 0.2 100 \
+	$(DIR)/$(DATE)_tss_scramble_peak_classification_hyperparam_tuned > \
+	$(DIR)/$(DATE)_tss_scramble_peak_classification_hyperparam_tuned.log
 
 
 rf_kmer: 
