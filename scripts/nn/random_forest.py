@@ -91,8 +91,11 @@ class RandomForestClassification(DecisionTree):
     def predict(self, X):
         return self.classifier.predict(X)
 
-    def score(self, X, y):
-        return ClassificationResult(y, self.predict(X))
+    # def score(self, X, y):
+    # 	y_bool = y == 1
+    # 	y_predict = self.predict(X)
+    # 	y_predict_bool = y_predict == 1
+    #     return ClassificationResult(y_bool, y_predict_bool)
 
 
 # def one_hot_encode(sequences):
@@ -194,6 +197,8 @@ if __name__ == '__main__':
 		model = RandomForestRegression()
 		model.train(X_train, y_train)
 		predictions = model.predict(X_test)
+		score = model.score(X_test, y_test)
+		print("Score:", score)
 
 	if args.classification:
 		print("Running random forest classification...")
@@ -202,11 +207,11 @@ if __name__ == '__main__':
 		predictions = model.predict(X_test)
 
 
-	with open(args.output_name, 'w') as outfile:
+	# with open(args.output_name, 'w') as outfile:
+	with open(output_name, 'w') as outfile:
 		for i in range(len(predictions)):
 			outfile.write(str(float(predictions[i])) + '\t' +
 				      str(float(y_test[i])) + '\n')
 
-	score = model.score(X_test, y_test)
-	print("Score:", score)
+
 
