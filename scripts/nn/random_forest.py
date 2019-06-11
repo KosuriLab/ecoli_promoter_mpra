@@ -207,8 +207,8 @@ if __name__ == '__main__':
 		predictions = model.predict(X_test)
 
 
-	# with open(args.output_name, 'w') as outfile:
-	with open(output_name, 'w') as outfile:
+	with open(args.output_name, 'w') as outfile:
+	# with open(output_name, 'w') as outfile:
 		for i in range(len(predictions)):
 			outfile.write(str(float(predictions[i])) + '\t' +
 				      str(float(y_test[i])) + '\n')
