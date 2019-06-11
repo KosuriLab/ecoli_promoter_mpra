@@ -1,11 +1,13 @@
-DATE=`date +%Y%m%d`
-DIR=../../processed_data/combined
+DATE := $(shell date +%Y%m%d)
+DIR :=../../processed_data/combined
+# SHELL := /bin/bash
 
 # define genome splits
 split:
 	python define_genome_splits.py 0.75 4639675 \
 	$(DIR)/tss_scramble_peak_expression_model_format.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format.txt --floor
+
 
 # create 6-mer counts feature file for random forest
 kmer: 
@@ -38,15 +40,16 @@ rf_onehot:
 	python random_forest.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
-	$(DIR)/$DATE_rfr_onehot_tss_scramble_peak_floored_predictions.txt \
+	$(DIR)/$(DATE)_rfr_onehot_tss_scramble_peak_floored_predictions.txt \
 	--onehot --seq_length 150 --regression
 
 
 mlp_6mer:
+	# @ echo "$(DIR)/${DATE}_mlp_tss_scramble_peak_predictions.txt"
 	python mlp_kmer.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
-	$(DIR)/${DATE}_mlp_tss_scramble_peak_predictions.txt 6 6 100 --regression
+	$(DIR)/$(DATE)_mlp_tss_scramble_peak_predictions.txt 6 6 100 --regression
 
 
 # run MLP for 3 to 6-mers

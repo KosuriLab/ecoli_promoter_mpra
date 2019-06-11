@@ -18,18 +18,18 @@ from collections import Counter
 
 num_epochs = 100
 
-def one_hot_encode(sequences):
-	# horizontal one-hot encoding
-    sequence_length = len(sequences[0])
-    integer_type = np.int8 if sys.version_info[
-        0] == 2 else np.int32  # depends on Python version
-    integer_array = LabelEncoder().fit(np.array(('ACGTN',)).view(integer_type)).transform(
-        sequences.view(integer_type)).reshape(len(sequences), sequence_length)
-    one_hot_encoding = OneHotEncoder(
-        sparse=False, n_values=5, dtype=integer_type).fit_transform(integer_array)
+# def one_hot_encode(sequences):
+# 	# horizontal one-hot encoding
+#     sequence_length = len(sequences[0])
+#     integer_type = np.int8 if sys.version_info[
+#         0] == 2 else np.int32  # depends on Python version
+#     integer_array = LabelEncoder().fit(np.array(('ACGTN',)).view(integer_type)).transform(
+#         sequences.view(integer_type)).reshape(len(sequences), sequence_length)
+#     one_hot_encoding = OneHotEncoder(
+#         sparse=False, n_values=5, dtype=integer_type).fit_transform(integer_array)
 
-    return one_hot_encoding.reshape(
-        len(sequences), 1, sequence_length, 5).swapaxes(2, 3)[:, :, [0, 1, 2, 4], :]
+#     return one_hot_encoding.reshape(
+#         len(sequences), 1, sequence_length, 5).swapaxes(2, 3)[:, :, [0, 1, 2, 4], :]
 
 
 def one_hot_encode_2d(sequences):

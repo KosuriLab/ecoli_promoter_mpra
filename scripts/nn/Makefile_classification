@@ -1,4 +1,4 @@
-DATE=`date +%Y%m%d`
+DATE := $(shell date +%Y%m%d)
 DIR=../../processed_data/combined
 
 # define genome splits
