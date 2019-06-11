@@ -1,4 +1,4 @@
-tmuxfrom __future__ import division
+from __future__ import division
 import timeit
 import sys
 from sklearn.cross_decomposition import PLSRegression
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('train', help='Filename of training set, k-mer counts')
     parser.add_argument('test', help='Filename of test set, k-mer counts')
     parser.add_argument('output_name', help='Output filename for predictions')
-    parser.add_argument('method', help='regression method. linear, pls, svmlinear, svmradial')
+    parser.add_argument('method', help='regression method. linear or pls')
 
     args = parser.parse_args()
     train_name = args.train
