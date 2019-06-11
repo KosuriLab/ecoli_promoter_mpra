@@ -37,16 +37,16 @@ rf_onehot:
 mlp_6mer:
 	# @ echo "$(DIR)/${DATE}_mlp_tss_scramble_peak_predictions.txt"
 	python mlp_kmer.py \
-	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split_classification.txt \
-	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification.txt \
 	$(DIR)/$(DATE)_mlp_tss_scramble_peak_predictions_classification.txt 6 6 100 --classification
 
 
 # run MLP for 3 to 6-mers
 mlp_3to6:
 	python mlp_kmer.py \
-	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split_classification.txt \
-	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification.txt \
 	$(DIR)/$(DATE)_mlp_tss_3to6mer_scramble_peak_predictions_classification.txt 3 6 100 --classification
 
 
