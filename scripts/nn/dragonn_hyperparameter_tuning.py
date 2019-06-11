@@ -43,58 +43,6 @@ def pad_sequence(seq, max_length):
 
 	return seq
 
-# def encode_trim_pad_fasta_sequences(fname, max_length):
-#     """
-#     One hot encodes sequences in fasta file. If sequences are too long, they will
-#     be trimmed to the center. If too short, they will be padded with Ns
-#     """
-#     name, seq_chars = None, []
-#     sequences = []
-#     with open(fname) as fp:
-#         for line in fp:
-#             line = line.rstrip()
-#             if line.startswith(">"):
-#                 if name:
-#                 	seq = ''.join(seq_chars).upper()
-#                 	# this will center the string, and pad with Ns
-#                 	if len(seq) > max_length:
-#                 		diff = len(seq) - max_length
-#                 		# diff%2 returns 1 if odd
-#                 		trim_length = int(diff / 2)
-#                 		seq = seq[trim_length : -(trim_length + diff%2)]
-#                 	else:
-#                 		seq = seq.center(max_length, 'N')
-#                 	sequences.append(seq)
-#                 name, seq_chars = line, []
-#             else:
-#                 seq_chars.append(line)
-#     if name is not None:
-#     	seq = ''.join(seq_chars).upper()
-#     	# this will center the string, and pad with Ns
-#     	if len(seq) > max_length:
-#     		diff = len(seq) - max_length
-#     		# diff%2 returns 1 if odd
-#     		trim_length = int(diff / 2)
-#     		seq = seq[trim_length : -(trim_length + diff%2)]
-#     	else:
-#     		seq = seq.center(max_length, 'N')
-#         sequences.append(seq)
-
-#     return one_hot_encode(np.array(sequences))
-
-
-# def process_seqs(filename, seq_length, activity_type):
-
-# 	X = encode_trim_pad_fasta_sequences(filename, seq_length)
-# 	if activity_type == 'active':
-# 		y = np.array([[True]]*len(X))
-# 	elif activity_type == 'inactive':
-# 		y = np.array([[False]]*len(X))
-# 	else:
-# 		raise ValueException('Please specify activity type: active or inactive')
-
-# 	return [X, y]
-
 
 def process_seqs(filename, seq_length):
 
