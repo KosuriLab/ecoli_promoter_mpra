@@ -137,7 +137,7 @@ def pad_sequence(seq, max_length):
 
 def process_seqs_onehot(filename, seq_length, encode_type='1d'):
 
-	seqs = fasta_reader(filename)
+	seqs = [line.strip().split('\t')[0] for line in open(filename)]
 	padded_seqs = [pad_sequence(x, seq_length) for x in seqs]
 	if encode_type == '1d':
 		X = one_hot_encode(np.array(padded_seqs))
