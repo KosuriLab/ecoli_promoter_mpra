@@ -60,10 +60,13 @@ mlp_3to6:
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
 	$(DIR)/$(DATE)_mlp_tss_3to6mer_scramble_peak_predictions.txt 3 6 100 --regression
 
-# generate random kmers
+# generate random sequences equal to training set to compute kmer frequency
+# in random genomic sequence
 random:
 	bedtools random -l 150 -n 87164 -g ../../ref/U00096.2.chrom.sizes -seed 123 > \
-	$(DIR)/genome_random_train.txt
+	$(DIR)/genome_random_train.bed
+	bedtools getfasta -fi ../../ref/U00096.2.fasta -bed $(DIR)/genome_random_train.bed \
+	-fo $(DIR)/genome_random_train.txt -name -tab -s 
 
 
 # generate 3 to 6-mers and filter features based on frequency in random genomic sequence
@@ -74,6 +77,23 @@ kmer_filtered:
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split_3to6mer_filtered.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split_3to6mer_filtered.txt \
 	3 6 --random $(DIR)/genome_random_train.txt
+
+
+# run linear regression on filtered k-mers
+linear:
+	python kmer_regression_models.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split_3to6mer_filtered.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split_3to6mer_filtered.txt \
+	$(DIR)/$(DATE)_kmer_linear_predictions.txt linear
+
+
+# run partial least squares regression on filtered k-mers
+pls:
+	python kmer_regression_models.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split_3to6mer_filtered.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split_3to6mer_filtered.txt \
+	$(DIR)/$(DATE)_kmer_pls_predictions.txt pls
+
 
 
 print-%  : ; @echo $* = $($*)
