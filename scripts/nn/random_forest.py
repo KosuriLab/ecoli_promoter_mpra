@@ -204,13 +204,16 @@ if __name__ == '__main__':
 		print("Running random forest classification...")
 		model = RandomForestClassification()
 		model.train(X_train, y_train)
+		# outputs probabilities, each entry is two element list, first element is
+		# probability of negative (0) class, second is positive (1) class
 		predictions = model.predict(X_test)
 
 
 	with open(args.output_name, 'w') as outfile:
 	# with open(output_name, 'w') as outfile:
 		for i in range(len(predictions)):
-			outfile.write(str(float(predictions[i])) + '\t' +
+			# output probability for positive class, second element
+			outfile.write(str(float(predictions[i][1])) + '\t' +
 				      str(float(y_test[i])) + '\n')
 
 
