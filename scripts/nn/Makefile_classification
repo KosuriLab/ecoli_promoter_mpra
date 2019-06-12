@@ -8,6 +8,34 @@ split:
 	$(DIR)/tss_scramble_peak_expression_model_format.txt \
 	--classification --neg_threshold 0.75 --pos_threshold 1.25
 
+
+# generate random sequences equal to training set to compute kmer frequency
+# in random genomic sequence
+random:
+	bedtools random -l 150 -n 53326 -g ../../ref/U00096.2.chrom.sizes -seed 123 > \
+	$(DIR)/genome_random_train_classification.bed
+	bedtools getfasta -fi ../../ref/U00096.2.fasta -bed $(DIR)/genome_random_train_classification.bed \
+	-fo $(DIR)/genome_random_train_classification.txt -name -tab -s 
+
+
+# generate 3 to 6-mers and filter features based on frequency in random genomic sequence
+kmer_filtered:
+	python kmer_feature_generator.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification_3to6mer_filtered.txt \
+	3 6 --random $(DIR)/genome_random_train_classification.txt
+
+
+# run linear regression on filtered k-mers
+linear:
+	python kmer_regression_models.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
+	$(DIR)/$(DATE)_kmer_logistic_predictions.txt linear
+
+
 # create 6-mer counts feature file for random forest
 kmer: 
 	@ Rscript create_kmer_counts.R \
