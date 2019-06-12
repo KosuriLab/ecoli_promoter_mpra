@@ -90,7 +90,7 @@ nn:
 	python dragonn_hyperparameter_tuning_regression.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split.txt \
-	150 4 5 100 0.2 100 \
+	150 3 5 100 0.2 100 \
 	$(DIR)/$(DATE)_tss_scramble_peak_regression_hyperparam_tuned > \
 	$(DIR)/$(DATE)_tss_scramble_peak_regression_hyperparam_tuned.log
 

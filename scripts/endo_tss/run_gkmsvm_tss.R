@@ -1,11 +1,13 @@
-# source('https://bioconductor.org/biocLite.R')
-# biocLite('GenomicRanges')
-# biocLite('rtracklayer')
-# biocLite('BSgenome')
-# install.packages('ROCR')
-# install.packages('kernlab')
-# install.packages('seqinr')
-# install.packages('gkmSVM')
+load_pkgs <- function(pkgs){
+    new_pkgs <- pkgs[!(pkgs %in% installed.packages()[, 'Package'])]
+    if(length(new_pkgs)) install.packages(new_pkgs)
+    for(pkg in pkgs){
+        suppressWarnings(suppressMessages(library(pkg, character.only = T)))
+    }
+}
+
+pkgs <- c('dplyr', 'ggplot2','cowplot', 'gkmSVM', 'seqinr')
+load_pkgs(pkgs)
 
 library('gkmSVM')
 library('seqinr')
@@ -33,24 +35,25 @@ write.fasta(as.list(train_negative$sequence), names = train_negative$name, nbcha
 
 kmer_length = 10
 ungapped <- 8
-# print("Creating kernel...")
-# gkmsvm_kernel(posfile = "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_positives.fasta", 
-#               negfile = "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_negatives.fasta", 
-#               outfile = '../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernel', 
-#               L = kmer_length, K = ungapped)
-# 
-# print("Training...")
-# # perform SVM training with cross-validation
-# result <- gkmsvm_trainCV(kernelfn = '../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernel',
-#                          posfn= "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_positives.fasta", 
-#                          negfn = "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_negatives.fasta",
-#                          svmfnprfx='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernel', 
-#                          outputCVpredfn='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_cvpred',
-#                          outputROCfn='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_roc', 
-#                          L = kmer_length, K = ungapped, showPlots = T, 
-#                          outputPDFfn = '../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_curves')
-# 
-# ggsave('../../processed_data/endo_tss/lb/model_files/gkmsvm_s10mer_8ungapped_ROC_PR_curves.png')
+
+print("Creating kernel...")
+gkmsvm_kernel(posfile = "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_positives.fasta",
+              negfile = "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_negatives.fasta",
+              outfile = '../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernel',
+              L = kmer_length, K = ungapped)
+
+print("Training...")
+# perform SVM training with cross-validation
+result <- gkmsvm_trainCV(kernelfn = '../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernel',
+                         posfn= "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_positives.fasta",
+                         negfn = "../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_negatives.fasta",
+                         svmfnprfx='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernel',
+                         outputCVpredfn='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_cvpred',
+                         outputROCfn='../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_roc',
+                         L = kmer_length, K = ungapped, showPlots = T,
+                         outputPDFfn = '../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_curves')
+
+ggsave('../../processed_data/endo_tss/lb/model_files/gkmsvm_s10mer_8ungapped_ROC_PR_curves.png')
 
 print("Classifying test set...")
 # read in test set and convert to FASTA
