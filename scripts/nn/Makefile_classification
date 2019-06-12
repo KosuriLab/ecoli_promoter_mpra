@@ -29,7 +29,7 @@ kmer_filtered:
 
 
 # run linear regression on filtered k-mers
-linear:
+logistic:
 	python kmer_regression_models.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
