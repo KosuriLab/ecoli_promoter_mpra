@@ -152,7 +152,7 @@ if __name__ == '__main__':
                 prediction = str(predictions[i])
             if args.classification:
                 prediction = str(predictions[i][1])
-            outfile.write(prediction) + '\t' + str(y_test[i]) + '\n')
+            outfile.write(prediction + '\t' + str(y_test[i]) + '\n')
 
     print 'job complete'
 
