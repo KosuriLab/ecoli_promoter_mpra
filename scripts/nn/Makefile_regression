@@ -33,7 +33,7 @@ linear:
 	python kmer_regression_models.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split_3to6mer_filtered.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split_3to6mer_filtered.txt \
-	$(DIR)/$(DATE)_kmer_linear_predictions.txt linear
+	$(DIR)/$(DATE)_kmer_linear_predictions.txt linear --regression
 
 
 # run partial least squares regression on filtered k-mers
@@ -41,7 +41,7 @@ pls:
 	python kmer_regression_models.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_train_genome_split_3to6mer_filtered.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_floored_test_genome_split_3to6mer_filtered.txt \
-	$(DIR)/$(DATE)_kmer_pls_predictions.txt pls
+	$(DIR)/$(DATE)_kmer_pls_predictions.txt pls --regression
 
 
 # create 6-mer counts feature file for random forest

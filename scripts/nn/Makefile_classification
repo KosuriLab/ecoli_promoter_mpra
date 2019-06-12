@@ -33,7 +33,7 @@ logistic:
 	python kmer_regression_models.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
-	$(DIR)/$(DATE)_kmer_logistic_predictions.txt linear
+	$(DIR)/$(DATE)_kmer_logistic_predictions.txt linear --classification
 
 
 # create 6-mer counts feature file for random forest
