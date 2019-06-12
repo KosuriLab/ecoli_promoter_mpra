@@ -89,7 +89,7 @@ class RandomForestClassification(DecisionTree):
         self.classifier.fit(X, y)
 
     def predict(self, X):
-        return self.classifier.predict(X)
+        return self.classifier.predict_proba(X)
 
     # def score(self, X, y):
     # 	y_bool = y == 1
