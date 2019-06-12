@@ -97,7 +97,7 @@ def predict_classification(features, expression, test_features):
                     tol=1e-8)
 
                 clf.fit(features, expression)
-                predictions = clf.predict(test_features)
+                predictions = clf.predict_proba(test_features)
 
     return predictions
 
@@ -148,7 +148,11 @@ if __name__ == '__main__':
 
     with open(args.output_name, 'w') as outfile:
         for i in range(len(predictions)):
-            outfile.write(str(predictions[i]) + '\t' + str(y_test[i]) + '\n')
+            if args.regression:
+                prediction = str(predictions[i])
+            if args.classification:
+                prediction = str(predictions[i][1])
+            outfile.write(prediction) + '\t' + str(y_test[i]) + '\n')
 
     print 'job complete'
 
