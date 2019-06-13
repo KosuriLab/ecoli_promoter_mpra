@@ -32,7 +32,7 @@ kmer_filtered:
 logistic:
 	python kmer_regression_models.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
-	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification_3to6mer_filtered.txt \
 	$(DIR)/$(DATE)_kmer_logistic_predictions.txt linear --classification
 
 
@@ -40,7 +40,7 @@ logistic:
 pls:
 	python kmer_regression_models.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
-	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_test_genome_split_classification_3to6mer_filtered.txt \
 	$(DIR)/$(DATE)_kmer_pls_classification_predictions.txt pls --classification
 
 
