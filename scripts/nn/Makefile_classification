@@ -28,12 +28,20 @@ kmer_filtered:
 	3 6 --random $(DIR)/genome_random_train_classification.txt
 
 
-# run linear regression on filtered k-mers
+# run logistic regression on filtered k-mers
 logistic:
 	python kmer_regression_models.py \
 	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
 	$(DIR)/$(DATE)_kmer_logistic_predictions.txt linear --classification
+
+
+# run partial least squares regression on filtered k-mers on binary variable
+pls:
+	python kmer_regression_models.py \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
+	$(DIR)/tss_scramble_peak_expression_model_format_train_genome_split_classification_3to6mer_filtered.txt \
+	$(DIR)/$(DATE)_kmer_pls_classification_predictions.txt pls --classification
 
 
 # create 6-mer counts feature file for random forest
@@ -93,6 +101,7 @@ split_tss:
 	python define_genome_splits.py 0.75 4639675 \
 	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt
 	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt
+
 
 gkmsvm: 
 	Rscript ../endo_tss/run_gkmsvm_tss.R

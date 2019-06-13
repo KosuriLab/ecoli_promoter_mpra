@@ -47,10 +47,9 @@ if __name__ == '__main__':
             # grab probabilities for positive class
             predictions = [predictions[i][1] for i in range(len(predictions))]
     elif method == 'pls':
-        if args.regression:
-            model = PLSRegression(n_components=2)
-            model.fit(X_train, y_train)
-            predictions = model.predict(X_test)
+        model = PLSRegression(n_components=2)
+        model.fit(X_train, y_train)
+        predictions = model.predict(X_test)
     
     # check if list needs to be flattened
     if type(predictions[0]) != np.float64:
