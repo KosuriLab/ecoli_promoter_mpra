@@ -43,16 +43,14 @@ if __name__ == '__main__':
             predictions = model.predict(X_test)
         if args.classification:
             model = LogisticRegression().fit(X_train, y_train)
-            predictions = predict_proba(X_test)
+            predictions = model.predict_proba(X_test)
             # grab probabilities for positive class
             predictions = [predictions[i][1] for i in range(len(predictions))]
-
     elif method == 'pls':
         if args.regression:
-        	model = PLSRegression(n_components=2)
-        	model.fit(X_train, y_train)
+            model = PLSRegression(n_components=2)
+            model.fit(X_train, y_train)
             predictions = model.predict(X_test)
-        # if args.classification:
     
     # check if list needs to be flattened
     if type(predictions[0]) != np.float64:
