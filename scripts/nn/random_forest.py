@@ -7,7 +7,7 @@ from abc import abstractmethod, ABCMeta
 # from keras_regression import SequenceDNN, RandomForestRegression, DecisionTree
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier as scikit_DecisionTree
-# from hyperparameter_search_regression import HyperparameterSearcher, RandomSearch
+from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 try:
     from sklearn.model_selection import train_test_split  # sklearn >= 0.18
@@ -91,25 +91,43 @@ class RandomForestClassification(DecisionTree):
     def predict(self, X):
         return self.classifier.predict_proba(X)
 
-    # def score(self, X, y):
-    # 	y_bool = y == 1
-    # 	y_predict = self.predict(X)
-    # 	y_predict_bool = y_predict == 1
-    #     return ClassificationResult(y_bool, y_predict_bool)
 
+def hyperparam_search(model_type, X, y):
 
-# def one_hot_encode(sequences):
-# 	# horizontal one-hot encoding
-#     sequence_length = len(sequences[0])
-#     integer_type = np.int8 if sys.version_info[
-#         0] == 2 else np.int32  # depends on Python version
-#     integer_array = LabelEncoder().fit(np.array(('ACGTN',)).view(integer_type)).transform(
-#         sequences.view(integer_type)).reshape(len(sequences), sequence_length)
-#     one_hot_encoding = OneHotEncoder(
-#         sparse=False, n_values=5, dtype=integer_type).fit_transform(integer_array)
+	if model_type == 'regression':
+		gsc = GridSearchCV(
+			estimator=RandomForestRegressor(),
+			param_grid={
+				'max_depth': range(3, 7),
+				'n_estimators': (10, 50, 100, 1000)
+			},
+			cv=5, scoring='neg_mean_squared_error', verbose=1, njobs=20)
+		grid_result = gsc.fit(X, y)
+		best_params = grid_result.best_params_
+		model_tuned = RandomForestRegressor(
+			max_depth=best_params['max_depth'],
+			n_estimators=best_params['n_estimators'],
+			random_state=False, verbose=False)
+		return model_tuned
 
-#     return one_hot_encoding.reshape(
-#         len(sequences), 1, sequence_length, 5).swapaxes(2, 3)[:, :, [0, 1, 2, 4], :]
+	elif model_type == 'classification':
+		gsc = GridSearchCV(
+			estimator=RandomForestClassifier(),
+			param_grid={
+				'max_depth': range(3, 7),
+				'n_estimators': (10, 50, 100, 1000)
+			},
+			cv=5, scoring='average_precision', verbose=1, njobs=20)
+		grid_result = gsc.fit(X, y)
+		best_params = grid_result.best_params_
+		model_tuned = RandomForestClassifier(
+			max_depth=best_params['max_depth'],
+			n_estimators=best_params['n_estimators'],
+			random_state=False, verbose=False)
+		return model_tuned
+
+	else:
+		raise ValueException('please specify model type either regression/classification')
 
 
 def one_hot_encode_2d(sequences):
@@ -193,22 +211,29 @@ if __name__ == '__main__':
 
 
 	if args.regression:
-		print("Running random forest regression...")
-		model = RandomForestRegression()
+		# print("Running random forest regression...")
+		# model = RandomForestRegression()
+
+		print("Hyperparameter tuning random forest regression...")
+		model = hyperparam_search('regression', X_train, y_train)
+
 		model.train(X_train, y_train)
 		predictions = model.predict(X_test)
 		score = model.score(X_test, y_test)
 		print("Score:", score)
 
 	if args.classification:
-		print("Running random forest classification...")
-		model = RandomForestClassification()
+		# print("Running random forest classification...")
+		# model = RandomForestClassification()
+
+		print("Hyperparameter tuning random forest classification...")
+		predictions = hyperparam_search('classification', X_train, y_train)
 		model.train(X_train, y_train)
-		# outputs probabilities, each entry is two element list, first element is
-		# probability of negative (0) class, second is positive (1) class
+		outputs probabilities, each entry is two element list, first element is
+		probability of negative (0) class, second is positive (1) class
 		predictions = model.predict(X_test)
 
-
+	
 	with open(args.output_name, 'w') as outfile:
 	# with open(output_name, 'w') as outfile:
 		for i in range(len(predictions)):
