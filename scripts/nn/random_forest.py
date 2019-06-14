@@ -101,7 +101,7 @@ def hyperparam_search(model_type, X, y):
 				'max_depth': range(3, 7),
 				'n_estimators': (10, 50, 100, 1000)
 			},
-			cv=5, scoring='neg_mean_squared_error', verbose=1, n_jobs=20)
+			cv=5, scoring='neg_mean_squared_error', verbose=50, n_jobs=50)
 		grid_result = gsc.fit(X, y)
 		best_params = grid_result.best_params_
 		model_tuned = RandomForestRegressor(
@@ -117,7 +117,7 @@ def hyperparam_search(model_type, X, y):
 				'max_depth': range(3, 7),
 				'n_estimators': (10, 50, 100, 1000)
 			},
-			cv=5, scoring='average_precision', verbose=1, n_jobs=20)
+			cv=5, scoring='average_precision', verbose=50, n_jobs=50)
 		grid_result = gsc.fit(X, y)
 		best_params = grid_result.best_params_
 		model_tuned = RandomForestClassifier(
@@ -219,8 +219,8 @@ if __name__ == '__main__':
 
 		model.train(X_train, y_train)
 		predictions = model.predict(X_test)
-		score = model.score(X_test, y_test)
-		print("Score:", score)
+		# score = model.score(X_test, y_test)
+		# print("Score:", score)
 
 	if args.classification:
 		# print("Running random forest classification...")
@@ -231,7 +231,7 @@ if __name__ == '__main__':
 		model.train(X_train, y_train)
 		#outputs probabilities, each entry is two element list, first element is
 		# probability of negative (0) class, second is positive (1) class
-		predictions = model.predict(X_test)
+		predictions = model.predict_proba(X_test)
 
 	
 	with open(args.output_name, 'w') as outfile:
