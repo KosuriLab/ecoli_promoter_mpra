@@ -217,7 +217,7 @@ if __name__ == '__main__':
 		print("Hyperparameter tuning random forest regression...")
 		model = hyperparam_search('regression', X_train, y_train)
 
-		model.train(X_train, y_train)
+		model.fit(X_train, y_train)
 		predictions = model.predict(X_test)
 		# score = model.score(X_test, y_test)
 		# print("Score:", score)
@@ -228,7 +228,7 @@ if __name__ == '__main__':
 
 		print("Hyperparameter tuning random forest classification...")
 		predictions = hyperparam_search('classification', X_train, y_train)
-		model.train(X_train, y_train)
+		model.fit(X_train, y_train)
 		#outputs probabilities, each entry is two element list, first element is
 		# probability of negative (0) class, second is positive (1) class
 		predictions = model.predict_proba(X_test)
