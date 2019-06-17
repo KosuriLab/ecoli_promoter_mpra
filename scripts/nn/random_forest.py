@@ -19,6 +19,7 @@ import time
 import itertools
 from collections import Counter
 from dragonn_metrics import ClassificationResult
+import cPickle
 
 
 class Model(object):
@@ -218,6 +219,9 @@ if __name__ == '__main__':
 		model = hyperparam_search('regression', X_train, y_train)
 
 		model.fit(X_train, y_train)
+		print ("saving file...")
+		with open('rf_model.pkl', 'wb') as model_file:
+			cPickle.dump(model, model_file)
 		predictions = model.predict(X_test)
 		# score = model.score(X_test, y_test)
 		# print("Score:", score)
