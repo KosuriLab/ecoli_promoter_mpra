@@ -226,6 +226,14 @@ if __name__ == '__main__':
 		# score = model.score(X_test, y_test)
 		# print("Score:", score)
 
+		with open(args.output_name, 'w') as outfile:
+		# with open(output_name, 'w') as outfile:
+			for i in range(len(predictions)):
+				# output probability for positive class, second element
+				outfile.write(str(float(predictions[i])) + '\t' +
+					      str(float(y_test[i])) + '\n')
+
+
 	if args.classification:
 		# print("Running random forest classification...")
 		# model = RandomForestClassification()
@@ -238,12 +246,12 @@ if __name__ == '__main__':
 		predictions = model.predict_proba(X_test)
 
 	
-	with open(args.output_name, 'w') as outfile:
-	# with open(output_name, 'w') as outfile:
-		for i in range(len(predictions)):
-			# output probability for positive class, second element
-			outfile.write(str(float(predictions[i][1])) + '\t' +
-				      str(float(y_test[i])) + '\n')
+		with open(args.output_name, 'w') as outfile:
+		# with open(output_name, 'w') as outfile:
+			for i in range(len(predictions)):
+				# output probability for positive class, second element
+				outfile.write(str(float(predictions[i][1])) + '\t' +
+					      str(float(y_test[i])) + '\n')
 
 
 
