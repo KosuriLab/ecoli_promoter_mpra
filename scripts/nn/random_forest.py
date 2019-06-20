@@ -201,8 +201,8 @@ if __name__ == '__main__':
 	parser.add_argument('--regression', action='store_true',
 		help='Run random forest regression')
 	parser.add_argument('--tune', action='store_true', help='run hyperparameter tuning')
-	parser.add_argument('--max_depth', type=int, help='max depth of tree')
-	parser.add_argument('--n_estimators', type=int, help='number of decision trees in forest')
+	parser.add_argument('--max_depth', const=0, type=int, help='max depth of tree')
+	parser.add_argument('--n_estimators', const=0, type=int, help='number of decision trees in forest')
 	args = parser.parse_args()
 
 	# load in pre-defined splits
@@ -221,7 +221,7 @@ if __name__ == '__main__':
 			print("Hyperparameter tuning random forest regression...")
 			model = hyperparam_search('regression', X_train, y_train)
 		else:
-			if args.max_depth not None:
+			if args.max_depth > 0:
 				max_depth = args.max_depth
 				n_estimators = args.n_estimators
 			else:
@@ -255,7 +255,7 @@ if __name__ == '__main__':
 			print("Hyperparameter tuning random classification...")
 			model = hyperparam_search('classification', X_train, y_train)
 		else:
-			if args.max_depth not None:
+			if args.max_depth > 0:
 				max_depth = args.max_depth
 				n_estimators = args.n_estimators
 			else:
