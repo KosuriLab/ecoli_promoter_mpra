@@ -201,8 +201,8 @@ if __name__ == '__main__':
 	parser.add_argument('--regression', action='store_true',
 		help='Run random forest regression')
 	parser.add_argument('--tune', action='store_true', help='run hyperparameter tuning')
-	parser.add_argument('--max_depth', const=0, type=int, help='max depth of tree')
-	parser.add_argument('--n_estimators', const=0, type=int, help='number of decision trees in forest')
+	parser.add_argument('--max_depth', nargs='?', const=0, type=int, help='max depth of tree')
+	parser.add_argument('--n_estimators', nargs='?', const=0, type=int, help='number of decision trees in forest')
 	args = parser.parse_args()
 
 	# load in pre-defined splits
