@@ -61,36 +61,36 @@ class DecisionTree(Model):
         return predictions
 
 
-class RandomForestRegression(DecisionTree):
+# class RandomForestRegression(DecisionTree):
 
-    def __init__(self):
-        self.regressor = RandomForestRegressor(n_estimators=100)
+#     def __init__(self):
+#         self.regressor = RandomForestRegressor(n_estimators=100)
 
-    def train(self, X, y, validation_data=None):
-        # X shape: n_samples, n_features
-        # y shape: n_samples
-        self.regressor.fit(X, y)
+#     def train(self, X, y, validation_data=None):
+#         # X shape: n_samples, n_features
+#         # y shape: n_samples
+#         self.regressor.fit(X, y)
 
-    def predict(self, X):
-        return self.regressor.predict(X)
+#     def predict(self, X):
+#         return self.regressor.predict(X)
 
-    def score(self, X, y):
-        predictions = np.squeeze(self.regressor.predict(X))
-        return np.corrcoef(predictions, y)[0,1]
+#     def score(self, X, y):
+#         predictions = np.squeeze(self.regressor.predict(X))
+#         return np.corrcoef(predictions, y)[0,1]
 
 
-class RandomForestClassification(DecisionTree):
+# class RandomForestClassification(DecisionTree):
 
-    def __init__(self):
-        self.classifier = RandomForestClassifier(n_estimators=100)
+#     def __init__(self):
+#         self.classifier = RandomForestClassifier(n_estimators=100)
 
-    def train(self, X, y, validation_data=None):
-        # X shape: n_samples, n_features
-        # y shape: n_samples
-        self.classifier.fit(X, y)
+#     def train(self, X, y, validation_data=None):
+#         # X shape: n_samples, n_features
+#         # y shape: n_samples
+#         self.classifier.fit(X, y)
 
-    def predict(self, X):
-        return self.classifier.predict_proba(X)
+#     def predict(self, X):
+#         return self.classifier.predict_proba(X)
 
 
 def hyperparam_search(model_type, X, y):
@@ -121,6 +121,7 @@ def hyperparam_search(model_type, X, y):
 			cv=5, scoring='average_precision', verbose=50, n_jobs=50)
 		grid_result = gsc.fit(X, y)
 		best_params = grid_result.best_params_
+		print best_params
 		model_tuned = RandomForestClassifier(
 			max_depth=best_params['max_depth'],
 			n_estimators=best_params['n_estimators'],
@@ -199,6 +200,9 @@ if __name__ == '__main__':
 		help='Run random forest classification')
 	parser.add_argument('--regression', action='store_true',
 		help='Run random forest regression')
+	parser.add_argument('--tune', action='store_true', help='run hyperparameter tuning')
+	parser.add_argument('--max_depth', type=int, help='max depth of tree')
+	parser.add_argument('--n_estimators', type=int, help='number of decision trees in forest')
 	args = parser.parse_args()
 
 	# load in pre-defined splits
@@ -212,40 +216,68 @@ if __name__ == '__main__':
 
 
 	if args.regression:
-		# print("Running random forest regression...")
-		# model = RandomForestRegression()
 
-		print("Hyperparameter tuning random forest regression...")
-		model = hyperparam_search('regression', X_train, y_train)
+		if args.tune:
+			print("Hyperparameter tuning random forest regression...")
+			model = hyperparam_search('regression', X_train, y_train)
+		else:
+			if args.max_depth not None:
+				max_depth = args.max_depth
+				n_estimators = args.n_estimators
+			else:
+				max_depth = None
+				n_estimators = 100
 
+			model = RandomForestRegressor(
+					max_depth=max_depth,
+					n_estimators=n_estimators,
+					random_state=False, verbose=False)
+
+		print("Running random forest regression...")
 		model.fit(X_train, y_train)
-		print ("saving file...")
-		with open('rf_model.pkl', 'wb') as model_file:
-			cPickle.dump(model, model_file)
+		
+		# print ("saving file...")
+		# with open('rf_model.pkl', 'wb') as model_file:
+		# 	cPickle.dump(model, model_file)
+		
 		predictions = model.predict(X_test)
-		# score = model.score(X_test, y_test)
-		# print("Score:", score)
+		score = np.corrcoef(np.squeeze(predictions), y_test)[0,1]
+		print("Score:", score)
 
 		with open(args.output_name, 'w') as outfile:
-		# with open(output_name, 'w') as outfile:
 			for i in range(len(predictions)):
-				# output probability for positive class, second element
 				outfile.write(str(float(predictions[i])) + '\t' +
 					      str(float(y_test[i])) + '\n')
 
-
 	if args.classification:
 		# print("Running random forest classification...")
-		# model = RandomForestClassification()
+		if args.tune:
+			print("Hyperparameter tuning random classification...")
+			model = hyperparam_search('classification', X_train, y_train)
+		else:
+			if args.max_depth not None:
+				max_depth = args.max_depth
+				n_estimators = args.n_estimators
+			else:
+				max_depth = None
+				n_estimators = 100
 
-		print("Hyperparameter tuning random forest classification...")
-		predictions = hyperparam_search('classification', X_train, y_train)
+			model = RandomForestClassifier(
+					max_depth=max_depth,
+					n_estimators=n_estimators,
+					random_state=False, verbose=False)
+
+		print("Running random forest classification...")
 		model.fit(X_train, y_train)
-		#outputs probabilities, each entry is two element list, first element is
+		
+		# print ("saving file...")
+		# with open('rf_model.pkl', 'wb') as model_file:
+		# 	cPickle.dump(model, model_file)
+		
+		# outputs probabilities, each entry is two element list, first element is
 		# probability of negative (0) class, second is positive (1) class
 		predictions = model.predict_proba(X_test)
 
-	
 		with open(args.output_name, 'w') as outfile:
 		# with open(output_name, 'w') as outfile:
 			for i in range(len(predictions)):
