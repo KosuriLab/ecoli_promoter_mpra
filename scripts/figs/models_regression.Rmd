@@ -1,0 +1,257 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+load_pkgs <- function(pkgs){
+    new_pkgs <- pkgs[!(pkgs %in% installed.packages()[, 'Package'])]
+    if(length(new_pkgs)) install.packages(new_pkgs)
+    for(pkg in pkgs){
+        suppressWarnings(suppressMessages(library(pkg, character.only = T)))
+    }
+}
+
+pkgs <- c('dplyr', 'ggplot2', 'tidyr', 'cowplot', 'ggsignif', 'stringr', 'pracma')
+load_pkgs(pkgs)
+
+library(Biostrings)
+
+options(stringsAsFactors = F)
+```
+
+Calculate PWM scores for TSS library only.
+
+```{r}
+data <- read.table('../../processed_data/endo_tss/lb/tss_expression_pwm_info.txt',
+                  header = T)
+
+calc_gc <- function(seq) {
+    seq_length <- nchar(seq)
+    noG <- gsub('G', '', seq)
+    noGC <- gsub('C', '', noG)
+    numGC <- seq_length - nchar(noGC)
+    gc_content <- numGC / seq_length
+    return(gc_content)
+}
+
+data$gc_content <- calc_gc(data$variant)
+
+train <- filter(data, dataset == 'train')
+test <- filter(data, dataset == 'test')
+
+# simple linear model based on max -35 and -10 score
+minus35and10_linear_fit <- lm(expn_med_fitted_scaled ~ minus35_max_score + minus10_max_score + 
+                                  pwm_paired_max + gc_content, train)
+summary(minus35and10_linear_fit)
+```
+
+
+```{r}
+test$predicted <- predict(minus35and10_linear_fit, test)
+r.squared_minus35and10 <- summary(lm(expn_med_fitted_scaled ~ predicted, test))$r.squared
+ggplot(test, aes(predicted, expn_med_fitted_scaled)) + geom_point() + 
+    geom_smooth(method = 'lm') + 
+    annotate('text', x = 0.5, y= 100, parse = T, label = paste('R^2==', signif(r.squared_minus35and10, 3))) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    labs(title = 'Linear regression model using max -35 and max -10',
+         y = 'observed')
+```
+
+```{r}
+linear_accuracy <- rmserr(test$predicted, test$expn_med_fitted_scaled)
+linear_accuracy
+```
+
+```{r}
+no_zeroes <- filter(train, expn_med_fitted_scaled != 0) %>% 
+    mutate(logged = log(expn_med_fitted_scaled))
+log_fit <- lm(logged ~ minus35_max_score + minus10_max_score +
+                  pwm_paired_max + gc_content, no_zeroes)
+summary(log_fit)
+```
+
+```{r}
+test$logged <- log(test$expn_med_fitted_scaled)
+test$predicted_log <- predict(log_fit, test)
+# no_zeroes$predicted_log <- predict(log_fit, no_zeroes)
+r.squared_minus35and10_log <- summary(lm(log(expn_med_fitted_scaled) ~ predicted_log, test))$r.squared
+ggplot(test, aes(exp(predicted_log), expn_med_fitted_scaled)) + geom_point() + 
+    geom_smooth(method = 'lm') + 
+    annotate('text', x = 0.65, y = 10, parse = T, label = paste('R^2==', signif(r.squared_minus35and10_log, 3))) +
+    scale_y_log10() + annotation_logticks() +
+    labs(title = 'Linear regression model using max -35 and max -10 (log-transformed)',
+         x = 'predicted', y = 'observed')
+```
+
+```{r}
+log_accuracy <- rmserr(exp(test$predicted_log), exp(test$logged))
+log_accuracy
+```
+
+
+Create training sets for 75% of the genome and test on remaining 25%. Combine TSS,
+scramble and peak libraries and "floor" the data by setting all values less than 1 equal to 1.
+This should encourage the learning models to pay less attention to the noise.
+
+Training samples: 87,164
+Test samples: 30,392
+
+```{r}
+kmer_predictions <- read.table('../../processed_data/combined/20190610_kmer_linear_predictions.txt',
+                               col.names = c('predicted', 'observed'))
+r.squared_kmer <- summary(lm(observed ~ predicted, kmer_predictions))$r.squared
+ggplot(kmer_predictions, aes(predicted, observed)) + geom_point() +
+    geom_smooth(method = 'lm') +
+    scale_x_log10() + scale_y_log10() + annotation_logticks(sides = 'bl') +
+    annotate('text', x = 0.001, y = 100, parse = T, label = paste('R^2==', signif(r.squared_kmer, 3))) +
+    labs(title = '3 to 6-mers multiple linear regression')
+```
+
+```{r}
+kmer_accuracy <- rmserr(kmer_predictions$observed, kmer_predictions$predicted)
+kmer_accuracy
+```
+
+```{r}
+kmer_pls_predictions <- read.table('../../processed_data/combined/20190610_kmer_pls_predictions.txt',
+                               col.names = c('predicted', 'observed'))
+r.squared_kmer_pls <- summary(lm(observed ~ predicted, kmer_pls_predictions))$r.squared
+ggplot(kmer_pls_predictions, aes(predicted, observed)) + geom_point() +
+    geom_smooth(method = 'lm') +
+    scale_x_log10() + scale_y_log10() + annotation_logticks(sides = 'bl') +
+    annotate('text', x = 0.0001, y = 100, parse = T, label = paste('R^2==', signif(r.squared_kmer_pls, 3))) +
+    labs(title = '3 to 6-mers partial least squares regression')
+```
+
+```{r}
+pls_accuracy <- rmserr(kmer_pls_predictions$predicted, kmer_pls_predictions$observed)
+pls_accuracy
+```
+
+```{r}
+rfr_onehot <- read.table('../../processed_data/combined/20190611_rfr_onehot_tss_scramble_peak_floored_predictions.txt',
+                                     col.names = c('predicted', 'observed'))
+rfr_onehot_accuracy <- rmserr(rfr_onehot$predicted, rfr_onehot$observed)
+rfr_onehot_accuracy
+```
+
+```{r}
+r.squared_rfr_onehot <- summary(lm(observed ~ predicted, rfr_onehot))$r.squared
+ggplot(rfr_onehot, aes(predicted, observed)) + geom_point() +
+    geom_smooth(method = 'lm') + 
+    annotate('text', x = 30, y = 1, parse = T, label = paste('R^2==', signif(r.squared_rfr_onehot, 3))) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    labs(title = 'Random forest regression (one-hot DNA))')
+```
+
+```{r}
+rfr <- read.table('../../processed_data/combined/20190617_rfr_tss_scramble_peak_floored_predictions.txt',
+                              col.names = c('predicted', 'observed'))
+rfr_accuracy <- rmserr(rfr$predicted, rfr$observed)
+rfr_accuracy
+```
+
+```{r}
+r.squared_rfr <- summary(lm(observed ~ predicted, rfr))$r.squared
+ggplot(rfr, aes(predicted, observed)) + geom_point() +
+    geom_smooth(method = 'lm') + 
+    annotate('text', x = 20, y = 1, parse = T, label = paste('R^2==', signif(r.squared_rfr, 3))) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    labs(title = 'Random forest regression (k-mer counts)')
+```
+
+```{r}
+mlp <- read.table('../../processed_data/combined/20190610_mlp_tss_scramble_peak_predictions.txt',
+                  col.names = c('predicted', 'observed'))
+
+r.squared_mlp <- summary(lm(observed ~ predicted, mlp))$r.squared
+ggplot(mlp, aes(predicted, observed)) + geom_point() +
+    geom_smooth(method = 'lm') + 
+    annotate('text', x = 100, y = 0.5, parse = T, label = paste('R^2==', signif(r.squared_mlp, 3))) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    labs(title = 'Multilayer perceptron (6-mers)')
+```
+
+```{r}
+mlp_accuracy <- rmserr(mlp$predicted, mlp$observed)
+mlp_accuracy
+```
+
+```{r}
+mlp_3to6 <- read.table('../../processed_data/combined/20190608_mlp_tss_3to6mer_scramble_peak_predictions.txt',
+                       col.names = c('predicted', 'observed'))
+r.squared_mlp_3to6 <- summary(lm(observed ~ predicted, mlp_3to6))$r.squared
+ggplot(mlp_3to6, aes(predicted, observed)) + geom_point() +
+    geom_smooth(method = 'lm') + 
+    annotate('text', x = 100, y = 0.5, parse = T, label = paste('R^2==', signif(r.squared_mlp_3to6, 3))) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    labs(title = 'Multilayer perceptron (3 to 6-mers)')
+```
+
+```{r}
+mlp_3to6_accuracy <- rmserr(mlp_3to6$predicted, mlp_3to6$observed)
+mlp_3to6_accuracy
+```
+
+```{r}
+nn <- read.table('../../processed_data/combined/20190611_tss_scramble_peak_regression_hyperparam_tuned_predictions.txt',
+                 col.names = c('sequence', 'predicted', 'observed'))
+nn_accuracy <- rmserr(nn$predicted, nn$observed)
+nn_accuracy
+```
+
+```{r}
+r.squared_nn <- summary(lm(observed ~ predicted, nn))$r.squared
+ggplot(nn, aes(predicted, observed)) + geom_point() +
+    geom_smooth(method = 'lm') + 
+    annotate('text', x = 30, y = 0.10, parse = T, 
+             label = paste('R^2==', signif(r.squared_nn, 3))) +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    labs(title = 'Neural network (one-hot encoding)')
+```
+
+
+```{r}
+accuracy <- bind_rows(data.frame(linear_accuracy, method = 'linear regression'),
+                      data.frame(log_accuracy, method = 'linear regression (log)'),
+                      data.frame(kmer_accuracy, method='linear regression (3 to 6-mer)'),
+                      data.frame(pls_accuracy, method='PLS regression (3 to 6-mer)'),
+                      data.frame(rfr_accuracy, method = 'random forest regression (6-mer)'),
+                      data.frame(rfr_onehot_accuracy, method = 'random forest regression (one-hot DNA)'),
+                      data.frame(mlp_accuracy, method = 'multi-layer perceptron (6-mer)'),
+                      data.frame(mlp_3to6_accuracy, method='multi-layer perceptron (3 to 6-mer)'),
+                      data.frame(nn_accuracy, method = 'neural network (one-hot DNA)'))
+
+accuracy$r.squared <- c(r.squared_minus35and10, r.squared_minus35and10_log,
+                        r.squared_kmer, r.squared_kmer_pls, r.squared_rfr,
+                        r.squared_rfr_onehot, r.squared_mlp, r.squared_mlp_3to6, 
+                        r.squared_nn)
+
+accuracy$method <- factor(accuracy$method,
+                          levels = c('linear regression',
+                                     'linear regression (log)',
+                                     'linear regression (3 to 6-mer)',
+                                     'PLS regression (3 to 6-mer)',
+                                     'random forest regression (6-mer)',
+                                     'random forest regression (one-hot DNA)',
+                                     'multi-layer perceptron (6-mer)',
+                                     'multi-layer perceptron (3 to 6-mer)',
+                                     'neural network (one-hot DNA)'))
+```
+
+```{r}
+gg1 <- ggplot(accuracy, aes(method, rmse)) + geom_bar(stat = 'identity') +
+    labs(x = '', y = 'RMSE') + coord_flip() 
+gg2 <- ggplot(accuracy, aes(method, r.squared)) + geom_bar(stat = 'identity') +
+    labs(x = '', y = 'R-squared') + coord_flip() +
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1))
+
+plot_grid(gg1, gg2, nrow = 2)
+```
+
+
+```{r}
+ggsave('../../figs/model_comparison_regression.pdf')
+```
+

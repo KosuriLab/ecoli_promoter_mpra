@@ -1,0 +1,193 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+load_pkgs <- function(pkgs){
+    new_pkgs <- pkgs[!(pkgs %in% installed.packages()[, 'Package'])]
+    if(length(new_pkgs)) install.packages(new_pkgs)
+    for(pkg in pkgs){
+        suppressWarnings(suppressMessages(library(pkg, character.only = T)))
+    }
+}
+
+pkgs <- c('dplyr', 'ggplot2', 'tidyr', 'cowplot', 'ggsignif', 'stringr', 'pracma',
+          'PRROC', 'wesanderson')
+load_pkgs(pkgs)
+
+library(Biostrings)
+
+options(stringsAsFactors = F)
+```
+
+Calculate PWM scores for TSS library only.
+
+```{r}
+data <- read.table('../../processed_data/endo_tss/lb/tss_expression_pwm_info.txt',
+                  header = T) %>% 
+    filter(expn_med_fitted_scaled < 0.75 | expn_med_fitted_scaled >= 1.25) %>% 
+    mutate(label = ifelse(expn_med_fitted_scaled <= 0.75, 0, 1))
+data$label <- factor(data$label)
+
+calc_gc <- function(seq) {
+    seq_length <- nchar(seq)
+    noG <- gsub('G', '', seq)
+    noGC <- gsub('C', '', noG)
+    numGC <- seq_length - nchar(noGC)
+    gc_content <- numGC / seq_length
+    return(gc_content)
+}
+
+data$gc_content <- calc_gc(data$variant)
+
+train <- filter(data, dataset == 'train')
+test <- filter(data, dataset == 'test')
+# simple linear model based on max -35 and -10 score
+minus35and10_logit_fit <- glm(label ~ minus35_max_score + minus10_max_score +
+                                  pwm_paired_max + gc_content,
+                              data = train, family = 'binomial')
+
+summary(minus35and10_logit_fit)
+```
+
+
+```{r}
+test$predicted <- predict(minus35and10_logit_fit, test, type = 'response')
+logit_curve <- pr.curve(scores.class0 = test$predicted[test$label == 1],
+                        scores.class1 = test$predicted[test$label == 0], curve = T)
+plot(logit_curve)
+```
+
+Create training sets for 75% of the genome and test on remaining 25%. Combine TSS,
+scramble and peak libraries. Points near our threshold of 1.0 could be noisy, 
+so let's only consider negatives as < 0.75 and positives as > 1.25
+
+Training: 12,918 positives and 40,408 negatives = 53,326
+Test: 4,414 positives and 14,153 negatives = 18,567 
+
+```{r}
+calculate_precision <- function(df) {
+    # how many predicted positives are true positives
+    num_false_positive <- filter(df, predicted == 1, observed == 0) %>% nrow()
+    num_true_positive <- filter(df, predicted == 1, observed == 1) %>% nrow()
+    precision <- num_true_positive / (num_true_positive + num_false_positive)
+    return(precision)
+}
+
+calculate_recall <- function(df) {
+    # how many true positives are predicted positive
+    num_true_positive <- filter(df, predicted == 1, observed == 1) %>% nrow()
+    num_false_negative <- filter(df, predicted == 0, observed == 1) %>% nrow()
+    recall <- num_true_positive / (num_true_positive + num_false_negative)
+    return(recall)
+}
+```
+
+```{r}
+logistic <- read.table('../../processed_data/combined/20190613_kmer_logistic_predictions.txt',
+                       col.names = c('predicted', 'observed'))
+logistic_curve <- pr.curve(scores.class0 = logistic$predicted[logistic$observed == 1],
+                           scores.class1 = logistic$predicted[logistic$observed == 0],
+                           curve = T)
+plot(logistic_curve)
+```
+
+
+```{r}
+pls <- read.table('../../processed_data/combined/20190613_kmer_pls_classification_predictions.txt',
+                       col.names = c('predicted', 'observed'))
+pls_curve <- pr.curve(scores.class0 = pls$predicted[pls$observed == 1],
+                           scores.class1 = pls$predicted[pls$observed == 0],
+                           curve = T)
+plot(pls_curve)
+```
+
+```{r}
+rf <- read.table('../../processed_data/combined/20190620_rf_tss_scramble_peak_classification_predictions.txt',
+                              col.names = c('predicted', 'observed'))
+rf_curve <- pr.curve(scores.class0 = rf$predicted[rf$observed == 1],
+                     scores.class1 = rf$predicted[rf$observed == 0],
+                     curve = T)
+plot(rf_curve)
+```
+
+
+```{r}
+rf_onehot <- read.table('../../processed_data/combined/20190611_rf_onehot_tss_scramble_peak_classification_predictions.txt',
+                              col.names = c('predicted', 'observed')) %>% 
+    mutate(predicted = as.numeric(predicted),
+           observed = as.numeric(observed)) %>% 
+    filter(!is.na(predicted), !is.na(observed))
+rf_onehot_curve <- pr.curve(scores.class0 = rf_onehot$predicted[rf_onehot$observed == 1],
+                            scores.class1 = rf_onehot$predicted[rf_onehot$observed == 0],
+                            curve = T)
+plot(rf_onehot_curve)
+```
+
+```{r}
+mlp <- read.table('../../processed_data/combined/20190611_mlp_tss_scramble_peak_predictions_classification.txt',
+                  col.names = c('predicted', 'observed'))
+mlp_curve <- pr.curve(scores.class0 = mlp$predicted[mlp$observed == 1],
+                      scores.class1 = mlp$predicted[mlp$observed == 0],
+                      curve = T)
+plot(mlp_curve)
+```
+
+
+```{r}
+mlp_3to6 <- read.table('../../processed_data/combined/20190612_mlp_3to6mer_tss_scramble_peak_predictions_classification.txt',
+                  col.names = c('predicted', 'observed'))
+mlp_3to6_curve <- pr.curve(scores.class0 = mlp_3to6$predicted[mlp_3to6$observed == 1],
+                           scores.class1 = mlp_3to6$predicted[mlp_3to6$observed == 0],
+                           curve = T)
+plot(mlp_3to6_curve)
+```
+
+"The no-skill line is defined by the total number of positive cases divide by the total number of positive and negative cases."
+
+```{r}
+nn <- read.table('../../processed_data/combined/20190610_tss_scramble_peak_classification_hyperparam_tuned_predictions.txt',
+                 col.names = c('predicted', 'observed'))
+nn_curve <- pr.curve(scores.class0 = nn$predicted[nn$observed == 1],
+                     scores.class1 = nn$predicted[nn$observed == 0], curve = T)
+plot(nn_curve)
+
+```
+
+
+```{r}
+# gkMSVM for TSS only
+gkmsvm <- read.table('../../processed_data/endo_tss/lb/model_files/gkmsvm_10mer_8ungapped_kernel_test_results',
+                     col.names = c('name', 'predicted'))
+tss_test <- read.table('../../processed_data/endo_tss/lb/model_files/tss_expression_model_format_test_genome_split.txt',
+                   header = F, sep = '\t', col.names = c('sequence', 'expression'))
+gkmsvm$observed <- tss_test$expression
+
+gkmsvm_pr_curve <- pr.curve(scores.class0 = filter(gkmsvm, observed >= 1)$predicted,
+                     scores.class1 = filter(gkmsvm, observed < 1)$predicted,
+                     curve = T)
+plot(gkmsvm_pr_curve)
+```
+
+```{r}
+# pdf('../../figs/model_comparison_classification.pdf')
+par(pty = 's')
+plot(logit_curve, add=F, color = 'red', auc.main = F, main = '')
+plot(logistic_curve, add = T, color = 'aquamarine')
+plot(pls_curve, add = T, color = 'black')
+plot(rf_curve, add=T, color = 'blue')
+plot(rf_onehot_curve, add = T, color = 'darkgreen')
+plot(mlp_curve, add = T, color = 'lightblue')
+plot(mlp_3to6_curve, add = T, color = 'purple')
+plot(nn_curve, add = T, color = 'gold')
+plot(gkmsvm_pr_curve, add = T, color = 'grey', legend = T)
+# dev.off()
+```
+
+```{r}
+combined_pct_pos <- length(which(mlp$observed == 1)) / nrow(mlp)
+tss_pct_pos <- length(which(gkmsvm$observed > 1)) / nrow(gkmsvm)
+print(c(combined_pct_pos, tss_pct_pos))
+```
+
