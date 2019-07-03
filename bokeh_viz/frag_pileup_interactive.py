@@ -11,8 +11,12 @@ import pandas as pd
 import numpy as np
 from math import pi
 from copy import deepcopy
+import sys
 
-os.chdir('/Users/Kimberly/Documents/projects/ecoli_promoters/endo/bokeh_viz')
+# change to script directory
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 
 
 global frag_plus_pileup
@@ -146,7 +150,7 @@ def make_region_genes(genes, start, end):
 def make_tss_arrow(tss, start, end, threshold=1.03, active_color='#2e6eb7', inactive_color='grey', width=8, arrow_length=50):
 
     # grab TSS within start and end
-    tss_region = tss[tss.tss_pos.isin(range(start, end))]
+    tss_region = tss[tss.tss_position.isin(range(start, end))]
     
     # list of lists. Need four quad coordinates: top, bottom, left, right
     # top and bottom are y-coordinates, left and right are x-coordinates
@@ -168,7 +172,7 @@ def make_tss_arrow(tss, start, end, threshold=1.03, active_color='#2e6eb7', inac
     for i in range(len(tss_region)):
         
         expn = tss_region.RNA_exp_sum_ave.iloc[i]
-        position = tss_region.tss_pos.iloc[i]
+        position = tss_region.tss_position.iloc[i]
         
         if expn < threshold:
             tss_color.append(inactive_color)   
@@ -408,17 +412,17 @@ endo_tss_lb = pd.read_table('../processed_data/endo_tss/lb/rLP5_Endo2_lb_express
                            sep=' ')
 
 # LB genomic shearing fragment pileup
-frag_lb_plus = pd.read_table('../processed_data/frag_peak_calling/lb/plus_frag_pileup.wig',
+frag_lb_plus = pd.read_table('../processed_data/frag/lb/plus_frag_pileup.wig',
                             sep='\t', skiprows=1, names=['position', 'expression'])
 
-frag_lb_minus = pd.read_table('../processed_data/frag_peak_calling/lb/minus_frag_pileup.wig',
+frag_lb_minus = pd.read_table('../processed_data/frag/lb/minus_frag_pileup.wig',
                             sep='\t', skiprows=1, names=['position', 'expression'])
 
 # M9 minimal genomic shearing fragment pileup
-frag_m9_plus = pd.read_table('../processed_data/frag_peak_calling/m9/plus_frag_pileup_M9.wig',
+frag_m9_plus = pd.read_table('../processed_data/frag/m9/plus_frag_pileup_M9.wig',
                             sep='\t', skiprows=1, names=['position', 'expression'])
 
-frag_m9_minus = pd.read_table('../processed_data/frag_peak_calling/m9/minus_frag_pileup_M9.wig',
+frag_m9_minus = pd.read_table('../processed_data/frag/m9/minus_frag_pileup_M9.wig',
                             sep='\t', skiprows=1, names=['position', 'expression'])
 
 
