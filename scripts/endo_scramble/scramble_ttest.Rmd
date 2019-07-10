@@ -9,7 +9,7 @@ First, let's read in the barcode counts and process that data.
 library(dplyr)
 library(tidyr)
 library(purrr)
-library(Biostrings)
+# library(Biostrings)
 library(ggplot2)
 library(cowplot)
 library(plotrix)
@@ -149,15 +149,14 @@ scramble_ttests %>%
 ```
 
 ```{r}
-# adjust p-value, don't include scrambles that weren't tested because there were
-# insufficient barcodes
-n <- nrow(filter(scramble_ttests, !is.na(mean_diff)))
-scramble_ttests$p.value.fdr <- p.adjust(scramble_ttests$p.value, n = n)
+# adjust p-value
+# n <- nrow(filter(scramble_ttests, !is.na(mean_diff)))
+scramble_ttests$p.value.fdr <- p.adjust(scramble_ttests$p.value, method = 'fdr')
 
 scramble_ttests <- scramble_ttests %>% 
     mutate(site_type_ttest = case_when(.$mean_diff < 0 ~ 'reduced',
                                  .$mean_diff > 0 ~ 'increased'),
-           significant = ifelse(p.value.fdr <= 0.05, T, F))
+           significant = ifelse(p.value.fdr <= 0.01, T, F))
 
 # format name
 scramble_ttests <- scramble_ttests %>% 
@@ -278,14 +277,6 @@ merged_overlap <- bind_rows(
     mutate(site_type = 'reduced')) %>% 
     mutate(tf_name = ifelse(tf_name == '.', NA, tf_name)) %>% 
     distinct()
-
-# scramble_merged <- merged_overlap %>% 
-#     group_by(scrambles, site_type) %>% 
-#     summarise(num_tfbs = sum(!is.na(tf_name))) %>% 
-#     select(-site_type) %>% 
-#     right_join(scramble_merged, by = 'scrambles') %>% 
-#     mutate(site_length = scramble_end_pos - scramble_start_pos) %>% 
-#     ungroup()
 ```
 
 ```{r}
@@ -301,36 +292,33 @@ scramble_merged <- scramble_merged %>%
 scramble_merged_parts <- scramble_merged %>% 
     mutate(scramble_list = strsplit(scrambles, split = ',TSS')) %>% 
     unnest(scramble_list) %>% 
-    mutate(scramble_part = gsub('TSS', '', scramble_list),
-           scramble_part = paste0('TSS', scramble_part),
-           scramble_part = gsub('TSSneg', 'neg', scramble_part)) %>% 
+    mutate(scramble_part = gsub('TSS', '', scramble_list)) %>% 
+    mutate(scramble_part = paste0('TSS', scramble_part)) %>% 
+    mutate(scramble_part = gsub('TSSneg', 'neg', scramble_part)) %>% 
     select(-scramble_list) %>% 
     left_join(select(data, name, tss_name, relative_exp, unscrambled_exp),
               by = c('scramble_part' = 'name'))
     
-merged_tf_concordance <- function(scramble_name, tf_effect, scramble_parts) {
+merged_tf_concordance <- function(scramble_name, tf_effect, scramble_merged_parts) {
     scramble_parts <- filter(scramble_merged_parts, scrambles == scramble_name)
-
     if(is.na(tf_effect)) {
         concordance <- NA
-    }
-    else if (tf_effect == '-') {
+    } else if (tf_effect == '-') {
         concordance <- any(scramble_parts$mean_group_diff > 0)
-    } 
-    else if (tf_effect == '+') {
+    } else if (tf_effect == '+') {
         concordance <- any(scramble_parts$mean_group_diff < 0)
-    }
-    else {
+    } else if (tf_effect == '+-') {
+        concordance <- TRUE
+    } else {
         concordance <- NA
     }
     return(concordance)
 }
 
-scramble_merged <- scramble_merged %>% 
-    distinct(scrambles, tfbs_left, tfbs_right, tf_name, tf_effect, .keep_all = T) %>% 
-    rowwise() %>% 
-    mutate(tf_concordance = merged_tf_concordance(scrambles, tf_effect, scramble_merged_parts)) %>% 
-    ungroup()
+scramble_merged$tf_concordance <- mapply(merged_tf_concordance,
+                                         scramble_merged$scrambles,
+                                         scramble_merged$tf_effect,
+                                         MoreArgs = list(scramble_merged_parts = scramble_merged_parts))
 
 write.table(scramble_merged, "../../processed_data/endo_scramble/scramble_merged_sites.txt",
             sep = '\t', row.names = F, quote = F)

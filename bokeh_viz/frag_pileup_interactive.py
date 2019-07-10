@@ -1,11 +1,12 @@
 from bokeh.plotting import figure, output_notebook, show, ColumnDataSource, output_file
+from bokeh.models.plots import Plot
 from bokeh.models import Legend, LegendItem
 from bokeh.models.tools import HoverTool, BoxSelectTool, BoxZoomTool, PanTool, WheelZoomTool, SaveTool, ResetTool
 from bokeh.models.tickers import FixedTicker
 from bokeh.models.widgets import CheckboxGroup, RangeSlider, Tabs, TextInput, Button, RadioGroup, RadioButtonGroup, Select, Paragraph, Div
 from bokeh.layouts import column, row, WidgetBox, Spacer, gridplot
 from bokeh.models import Panel, Range1d, LinearAxis
-from bokeh.io import show, curdoc
+from bokeh.io import show, curdoc, export_svgs
 import os
 import pandas as pd
 import numpy as np
@@ -147,7 +148,7 @@ def make_region_genes(genes, start, end):
     return src_gene
 
 
-def make_tss_arrow(tss, start, end, threshold=1.03, active_color='#2e6eb7', inactive_color='grey', width=8, arrow_length=50):
+def make_tss_arrow(tss, start, end, threshold=1, active_color='#2e6eb7', inactive_color='grey', width=8, arrow_length=50):
 
     # grab TSS within start and end
     tss_region = tss[tss.tss_position.isin(range(start, end))]
@@ -258,17 +259,24 @@ def make_region_plot(src, src_gene, src_tss, src_rna):
     # p.xaxis[0].ticker=FixedTicker(ticks=range(start, end, 100))
     p.yaxis.axis_label = 'log normalized activity'
         
-    patches = p.patches(source=src, xs='position', ys='count', fill_color='color', line_color=None, alpha=0.50)
-    legends.append(LegendItem(label='promoter activity (plus strand)', renderers=[patches], index=0))
-    legends.append(LegendItem(label='promoter activity (minus strand)', renderers=[patches], index=1))
+    patches = p.patches(source=src, xs='position', ys='count', 
+        fill_color='color', line_color=None, alpha=0.50)
+    legends.append(LegendItem(label='promoter activity (plus strand)', 
+        renderers=[patches], index=0))
+    legends.append(LegendItem(label='promoter activity (minus strand)', 
+        renderers=[patches], index=1))
     
 
     # draw RNA lines
     if len(src_rna.data['x_minus']) > 0:
-        plus_line = p.line(x='x_plus', y='y_plus', line_color='#528ecb', line_width=2, source=src_rna)
-        legends.append(LegendItem(label='RNA-seq (plus strand)', renderers=[plus_line], index=0))
-        minus_line = p.line(x='x_minus', y='y_minus', line_color='#ef8137', line_width=2, source=src_rna)
-        legends.append(LegendItem(label='RNA-seq (minus strand)', renderers=[minus_line], index=1))
+        plus_line = p.line(x='x_plus', y='y_plus', line_color='#528ecb', 
+            line_width=2, source=src_rna)
+        legends.append(LegendItem(label='RNA-seq (plus strand)',
+            renderers=[plus_line], index=0))
+        minus_line = p.line(x='x_minus', y='y_minus', line_color='#ef8137',
+            line_width=2, source=src_rna)
+        legends.append(LegendItem(label='RNA-seq (minus strand)',
+            renderers=[minus_line], index=1))
 
 
     # add second y-axis for TSS strength
@@ -283,18 +291,17 @@ def make_region_plot(src, src_gene, src_tss, src_rna):
     p.segment(x0='x0', y0='y0', x1='x1', y1='y1', color='color',
               source=src_tss, line_width=4,  y_range_name='tss')
     # center of triangle is endpoint of segment
-    tri = p.triangle(x='x1', y='y1', size=9, angle='angle', angle_units='deg', color='color', 
-               source=src_tss, y_range_name='tss')
-    legends.append(LegendItem(label='active TSS', renderers=[tri], index=9))
-    legends.append(LegendItem(label='inactive TSS', renderers=[tri], index=0))
+    tri = p.triangle(x='x1', y='y1', size=9, angle='angle', angle_units='deg',
+        color='color', source=src_tss, y_range_name='tss')
+    legends.append(LegendItem(label='inactive TSS', renderers=[tri], index=9))
+    legends.append(LegendItem(label='active TSS', renderers=[tri], index=0))
     
 
     # plot genes
-    p.rect(x='gene_center', y='gene_center_y', width='gene_width',
-                 color='gene_color', height=10, height_units='screen', 
-                  alpha=0.75, source=src_gene)
+    p.rect(x='gene_center', y='gene_center_y', width='gene_width', color='gene_color', 
+        height=10, height_units='screen', source=src_gene)
     p.triangle(x='tri_x', y=0, size=20, angle='angle', angle_units='deg',
-                     fill_color='gene_color', line_color=None, alpha=0.75, source=src_gene)
+                     fill_color='gene_color', line_color=None, source=src_gene)
     p.text(x='gene_center', y='gene_center_y', text='gene_name', text_color='black',
           text_align='center', text_baseline='middle', text_font_size='10pt', source=src_gene)
     
@@ -404,25 +411,30 @@ def update_gene(attr, old, new):
 
     else:
         gene_search.value = 'No gene match'
+
+
+def export_svg():
+    p.output_backend ='svg'
+    export_svgs(p, filename='bokeh_plot.svg')
     
 ############################ Read in data ######################################
 
 # endo TSS expression
-endo_tss_lb = pd.read_table('../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted.txt',
-                           sep=' ')
+endo_tss_lb = pd.read_csv('../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted_std.txt',
+                           sep='\t')
 
 # LB genomic shearing fragment pileup
-frag_lb_plus = pd.read_table('../processed_data/frag/lb/plus_frag_pileup.wig',
+frag_lb_plus = pd.read_csv('../processed_data/frag/lb/plus_frag_pileup.wig',
                             sep='\t', skiprows=1, names=['position', 'expression'])
 
-frag_lb_minus = pd.read_table('../processed_data/frag/lb/minus_frag_pileup.wig',
+frag_lb_minus = pd.read_csv('../processed_data/frag/lb/minus_frag_pileup.wig',
                             sep='\t', skiprows=1, names=['position', 'expression'])
 
 # M9 minimal genomic shearing fragment pileup
-frag_m9_plus = pd.read_table('../processed_data/frag/m9/plus_frag_pileup_M9.wig',
+frag_m9_plus = pd.read_csv('../processed_data/frag/m9/plus_frag_pileup_M9.wig',
                             sep='\t', skiprows=1, names=['position', 'expression'])
 
-frag_m9_minus = pd.read_table('../processed_data/frag/m9/minus_frag_pileup_M9.wig',
+frag_m9_minus = pd.read_csv('../processed_data/frag/m9/minus_frag_pileup_M9.wig',
                             sep='\t', skiprows=1, names=['position', 'expression'])
 
 
@@ -447,9 +459,9 @@ frag_minus_pileup_norm.expression = min_max_scale(frag_minus_pileup_norm.express
 
 
 # read in M9 sequencing data
-rna_plus = pd.read_table('B6_M9_2.Forward.wig',
+rna_plus = pd.read_csv('B6_M9_2.Forward.wig',
     sep='\t', skiprows=1, names=['position', 'raw_expression'])
-rna_minus = pd.read_table('B6_M9_2.Reverse.pos_values.wig',
+rna_minus = pd.read_csv('B6_M9_2.Reverse.pos_values.wig',
     sep='\t', skiprows=1, names=['position', 'raw_expression'])
 rna_plus.raw_expression.describe()
 
@@ -466,7 +478,7 @@ rna_minus['condition'] = ['M9'] * len(rna_minus)
 
 
 # read in gene annotation
-genes = pd.read_table('U00096.2_genes_clean.bed', sep = '\t', header = None,
+genes = pd.read_csv('U00096.2_genes_clean.bed', sep = '\t', header = None,
                       names=['chrom', 'start', 'end', 'name', 'score', 'strand', 
                             'thick_start', 'thick_end', 'item_rgb', 'block_count',
                             'block_sizes', 'block_start'])
@@ -492,10 +504,11 @@ condition_selection.on_change('active', update_region_plot)
 #                           step = 100, title = 'genomic position')
 
 # TextInput to define start and end position
-start = TextInput(value='362455', title='genome U00096.2 start position')
-end = TextInput(value='365529', title='genome end position')
-# start = TextInput(value='1231500', title='genome (U00096.2) start position')
-# end = TextInput(value='1234500', title='genome end position')
+# lacZ
+# start = TextInput(value='362455', title='genome U00096.2 start position')
+# end = TextInput(value='365529', title='genome end position')
+start = TextInput(value='1232000', title='genome (U00096.2) start position')
+end = TextInput(value='1238000', title='genome end position')
 
 # update plot when value is changed
 # position_selection.on_change('value', update_region_plot)
@@ -534,6 +547,11 @@ axis_button.on_click(update_axis)
 # search by gene name
 gene_search = TextInput(value='Enter your favorite gene!', title='Search by gene name (case sensitive)')
 gene_search.on_change('value', update_gene)
+
+# export to SVG
+export_button = Button(label='Export plot to SVG', button_type='primary')
+export_button.on_click(export_svg)
+
 ############################## Initialize ######################################
 
 # find initial conditions and position
@@ -602,7 +620,7 @@ tss_text = Div(text='''
 # layout = gridplot([controls_row1, p, WidgetBox(tss_text, tss_button), WidgetBox(gene_button, start, end)], ncols=2)
 
 controls_group1 = WidgetBox(general_text, norm_text, frag_text, condition_selection, rna_text, rna_button, axis_button)
-controls_group2 = WidgetBox(gene_button, start, end, add_button, gene_search)
+controls_group2 = WidgetBox(gene_button, start, end, add_button, gene_search, export_button)
 layout = row(controls_group1, p, controls_group2)
 
 # make tab with layout

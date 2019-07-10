@@ -4,6 +4,9 @@ output: html_notebook
 ---
 
 ```{r setup, include=FALSE}
+# paths <- .libPaths()
+# .libPaths(c(paths[2], paths[1]))
+
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -51,6 +54,12 @@ ggsave('../../figs/fig5/fig5a_scramble_ttest.pdf', unit = 'in',
        height = 5, width = 7)
 ```
 
+```{r}
+data %>% 
+    group_by(site_type_ttest, significant) %>% 
+    tally()
+```
+
 Figure5D - Looking at disagreed scrambles
 
 ```{r}
@@ -63,7 +72,7 @@ scramble_merged %>%
     tally() %>% 
     ggplot(aes(tf_effect, n)) +
     geom_bar(stat = 'identity', position = 'dodge', aes(fill = tf_concordance)) +
-    scale_y_continuous(breaks = seq(0, 1200, 100)) +
+    scale_y_continuous(breaks = seq(0, 2750, 250)) +
     # axis.break(axis = 1, breakpos = 500) +
     scale_fill_manual(values = c('#FFBC42', '#0496FF'), na.value = 'gray38') +
     labs(x = 'TFBS gene expression effect', y = 'count', 
@@ -76,6 +85,70 @@ ggsave('../../figs/fig5/fig5d_regulondb_concordance.pdf', units = 'in',
 ```
 
 
+```{r}
+# supplementary figure, distribution of concordance for repressors by the scramble position
+# relative to the TSS
+scramble_merged_parts <- scramble_merged %>% 
+    mutate(scramble_list = strsplit(scrambles, split = ',TSS')) %>% 
+    unnest(scramble_list) %>% 
+    mutate(scramble_part = gsub('TSS', '', scramble_list)) %>% 
+    mutate(scramble_part = paste0('TSS', scramble_part)) %>% 
+    mutate(scramble_part = gsub('TSSneg', 'neg', scramble_part)) %>% 
+    select(-scramble_list) %>% 
+    left_join(select(data, name, scramble_pos_rel_tss), by = c('scramble_part' = 'name'))
+```
 
 
+```{r}
+scramble_merged_parts %>% 
+    filter(site_type == 'reduced', !is.na(tf_concordance)) %>%
+    ggplot(aes(scramble_pos_rel_tss)) + 
+    geom_bar(aes(fill=tf_concordance)) +
+    scale_fill_manual(values = c('#FFBC42', '#0496FF'), na.value = 'gray38') +
+    labs(fill = 'TF concordance',
+         x = 'scramble position relative to TSS',
+         title = 'Repressors')
+```
+
+
+```{r}
+scramble_merged_parts %>% 
+    filter(site_type == 'increased', !is.na(tf_concordance)) %>%
+    ggplot(aes(scramble_pos_rel_tss)) + 
+    geom_bar(aes(fill=tf_concordance)) +
+    scale_fill_manual(values = c('#FFBC42', '#0496FF'), na.value = 'gray38') +
+    labs(fill = 'TF concordance',
+         x = 'scramble position relative to TSS',
+         title = 'Activators')
+```
+
+```{r}
+# length of scrambles
+scramble_merged %>% 
+    mutate(length = scramble_end_pos - scramble_start_pos) %>% 
+    mutate(site_type_mod = case_when(.$site_type == 'increased' ~ 'Activating',
+                                 .$site_type == 'reduced' ~ 'Repressing')) %>% 
+    ggplot(aes(length)) + 
+    geom_histogram(aes(fill = site_type_mod), position = 'dodge', binwidth = 10) +
+    scale_fill_manual(values = c(repressor_color, activator_color), na.value = 'gray65') +
+    scale_x_continuous(breaks = seq(0, 100, 10)) +
+    labs(fill = '', x = 'merged scramble length (bp)')
+```
+
+```{r}
+# effect size as function of length
+scramble_merged_parts %>% 
+    mutate(length = scramble_end_pos - scramble_start_pos,
+           length_bin = cut(length, breaks = seq(0, 100, 10)),
+           site_type_mod = case_when(.$site_type == 'increased' ~ 'Activating',
+                                 .$site_type == 'reduced' ~ 'Repressing')) %>% 
+    left_join(select(data, name, relative_exp), by = c('scramble_part' = 'name')) %>% 
+    ggplot(aes(length_bin, relative_exp)) + 
+    geom_boxplot(aes(fill = site_type_mod), position = 'dodge') +
+    scale_y_log10() + annotation_logticks(sides = 'l') +
+    scale_fill_manual(values = c(repressor_color, activator_color), na.value = 'gray65') + 
+    labs(fill = '',
+         x = 'merged scramble length (bp)', 
+         y = 'relative expression')
+```
 
