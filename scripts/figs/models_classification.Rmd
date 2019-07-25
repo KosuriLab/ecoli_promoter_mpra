@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Classification Models"
 output: html_notebook
 ---
 
@@ -171,8 +171,10 @@ plot(gkmsvm_pr_curve)
 ```
 
 ```{r}
-# pdf('../../figs/model_comparison_classification.pdf')
-par(pty = 's')
+tp_rate <- 4414/18567
+
+# pdf('../../figs/fig6/model_comparison_classification.pdf')
+# par(pty = 's')
 plot(logit_curve, add=F, color = 'red', auc.main = F, main = '')
 plot(logistic_curve, add = T, color = 'aquamarine')
 plot(pls_curve, add = T, color = 'black')
@@ -182,6 +184,7 @@ plot(mlp_curve, add = T, color = 'lightblue')
 plot(mlp_3to6_curve, add = T, color = 'purple')
 plot(nn_curve, add = T, color = 'gold')
 plot(gkmsvm_pr_curve, add = T, color = 'grey', legend = T)
+abline(h = tp_rate, lty = 'dashed')
 # dev.off()
 ```
 

@@ -1,5 +1,6 @@
 library(dplyr)
 
+args <- commandArgs(trailingOnly = TRUE)
 Endo2 <- read.table("../../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression.txt", 
                     header = T)
 
