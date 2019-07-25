@@ -1,0 +1,36 @@
+Mapping BCs...
+Mapped 7791482 barcodes in 594.98 seconds
+Filtering BCs without a consensus of < 3 reads
+Found 4083854 BCs with < 3 reads in 20.21 secs
+Using BBMap to find contaminated barcodes at 5 away
+Mapped barcodes in 546.33 secs
+Found 12648 barcodes that map too far away in 15.33 secs
+Found 2875 truncated barcodes in 92.44 secs
+Found 1918 barcodes with at least one sequence at dist 4 with at least 2 reads in 29.92 secs
+Merged reads in 313.42 seconds
+Total BCs remaining after filters 3690187
+Total time 26.88 mins
+Wrote 4101295 barcodes in 27.08 secs
+Mapping controls...
+Number of reads: 100165621
+Running bbmap...
+Number of unique barcodes for aligned reads:  2410
+Filter by barcode frequency...
+Number of barcodes > 2: 1280
+Bootstrapping reference sequences to obtain cutoff... cutoff is Levenshtein distance  6.0
+Filtering and writing resultbs...
+Percent of library represented by final barcodes: 0.991071428571
+Number of final barcodes:  1206
+
+[1] "Count folder: ../../processed_data/endo_scramble"
+[1] "Barcode map file: ../../processed_data/endo_scramble/endo_scramble_combined_bc_map.txt"
+[1] "Barcode map control file ../../processed_data/endo_scramble/endo_scramble_combined_controls_bc_map.txt"
+[1] "Reference file: ../../ref/20180507_active_tss_scrambled10_stride5.txt"
+[1] "Output name: ../../processed_data/endo_scramble/endo_scramble_expression.txt"
+[1] "Number of unique sequenced barcodes, all replicates in DNA and RNA: 4723300"
+[1] "Number of barcodes in mapping run: 3691643"
+[1] "Number of barcodes in mapping run and mapped to reference: 1818909"
+[1] "Number of mapped and sequenced barcodes, all replicates in DNA and RNA: 870950"
+[1] "Mapped and integrated library: 89%"
+[1] "Active threshold (sum): 1.2542197966825"
+[1] "Active threshold (median): 1.20223042413379"
