@@ -9,7 +9,6 @@ First, let's read in the barcode counts and process that data.
 library(dplyr)
 library(tidyr)
 library(purrr)
-# library(Biostrings)
 library(ggplot2)
 library(cowplot)
 library(plotrix)

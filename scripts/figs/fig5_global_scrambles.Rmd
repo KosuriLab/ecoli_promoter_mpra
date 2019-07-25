@@ -66,14 +66,12 @@ Figure5D - Looking at disagreed scrambles
 scramble_merged <- read.table("../../processed_data/endo_scramble/scramble_merged_sites.txt", header = T)
 
 scramble_merged %>% 
-    # filter(!is.na(tf_concordance)) %>% 
     filter(tf_effect == '-' | tf_effect == '+' | is.na(tf_effect)) %>%
     group_by(tf_effect, tf_concordance) %>% 
     tally() %>% 
     ggplot(aes(tf_effect, n)) +
     geom_bar(stat = 'identity', position = 'dodge', aes(fill = tf_concordance)) +
     scale_y_continuous(breaks = seq(0, 2750, 250)) +
-    # axis.break(axis = 1, breakpos = 500) +
     scale_fill_manual(values = c('#FFBC42', '#0496FF'), na.value = 'gray38') +
     labs(x = 'TFBS gene expression effect', y = 'count', 
          fill = 'concordance',
