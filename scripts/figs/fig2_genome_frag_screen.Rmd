@@ -16,6 +16,13 @@ library(matrixStats)
 library(reshape2)
 ```
 
+```{r}
+tfbs_regulondb <- read.table("../../ref/regulondb_tfbs_U00096.2.txt", 
+                             skip = 30, fill = NA, sep = '\t') %>% 
+    mutate(strand = ifelse(V6 == 'forward', '+', '-')) %>%
+    select(tfbs = V2, tfbs_left = V4, tfbs_right = V5, strand) %>%
+    distinct()
+```
 
 2C - Fragment Activity at TSSs
 
@@ -64,41 +71,129 @@ names(tss_negative) <- c('position', 'coverage', 'Type')
 ```
 
 ```{r}
-set.seed(123)
-rbind(tss_active, tss_inactive, tss_negative) %>% #need to down-sample otherwise memory error
-    ggplot(., aes(x=position, y=coverage)) +
+rbind(tss_active, tss_inactive, tss_negative) %>% 
+    ggplot(., aes(x = position, y = coverage)) +
     geom_smooth(method ='auto', aes(fill = Type, color = Type)) +
     geom_vline(xintercept = c(1), linetype = 'dashed') +
     scale_color_manual(breaks = c('Active TSS', 'Inactive TSS', "Negative TSS"),
-                     values = c("#2E6EB7","#F6BA60", "grey")) +
+                     values = c("#2E6EB7", "#F6BA60", "grey")) +
     scale_fill_manual(breaks = c('Active TSS', 'Inactive TSS', "Negative TSS"),
-                     values = c("#2E6EB7","#F6BA60", "grey")) +
-    # scale_x_continuous(breaks = c(-200, -100, 1, 100)) +
+                     values = c("#2E6EB7", "#F6BA60", "grey")) +
     labs(x ='Position Relative to TSS',
-         y = 'Mean Promoter Activity') +
+         y = 'Mean Promoter Activity\n(per Base)') +
     theme(axis.title.x = element_text(size = 20),
         axis.text.y = element_text(size = 20), 
         axis.text.x = element_text(size = 20), 
         axis.title.y = element_text(size = 20), 
-        legend.text=element_text(size=20))
+        legend.text = element_text(size = 20),
+        legend.title = element_blank())
 
 ggsave('../../figs/fig2/tss_frag_activity.pdf', units = 'in',
        height = 4.5, width = 8)
 ```
 
 
-```{r}
-M9_num <- read.table("../../processed_data/frag/m9/Unshared_M9_peaks.bed") %>% nrow()
+```{bash}
+# Identify peaks that are unique to each condition
+bedtools intersect -v -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed > ../../processed_data/frag/Unshared_LB_peaks.bed
 
-LB_num <- read.table("../../processed_data/frag/lb/Unshared_LB_peaks.bed") %>% nrow()
+bedtools intersect -v -s -a ../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed > ../../processed_data/frag/Unshared_M9_peaks.bed
+
+bedtools intersect -s -a ../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -wo > ../../processed_data/frag/Shared_peaks.bed
+
+#get sequences of M9 only
+bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/Unshared_M9_peaks.bed -s -fo ../../processed_data/frag/Unshared_M9_peaks.fasta
+
+bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/Unshared_LB_peaks.bed -s -fo ../../processed_data/frag/Unshared_LB_peaks.fasta
+```
+
+
+```{r}
+M9_num <- read.table("../../processed_data/frag/Unshared_M9_peaks.bed") %>% nrow()
+
+LB_num <- read.table("../../processed_data/frag/Unshared_LB_peaks.bed") %>% nrow()
 
 M9_total <- read.table("../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed") %>% nrow()
-
-shared <- M9_total - M9_num
-
 print(paste(M9_num, "unique to M9"))
 print(paste(LB_num, "unique to LB"))
-print(paste(shared, "shared"))
+```
+
+```{bash}
+# shared peaks
+wc -l ../../processed_data/frag/Shared_peaks.bed
+```
+
+FIgure 2E: Condition specific promoters
+
+```{r}
+M9_only_peaks <- read.table("../../processed_data/frag/Unshared_M9_peaks.bed") %>% 
+    select(peak_name = V4, peak_left = V2, peak_right = V3, peak_score = V5, peak_strand = V6) 
+
+LB_only_peaks <- read.table("../../processed_data/frag/Unshared_LB_peaks.bed") %>% 
+    select(peak_name = V4, peak_left = V2, peak_right = V3, peak_score = V5, peak_strand = V6) 
+
+
+M9_tfbs_overlap <- sqldf("SELECT a.*, b.*
+                    FROM M9_only_peaks AS a 
+                    JOIN tfbs_regulondb AS b
+                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
+                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
+    na.omit() %>% mutate(sequence_space = sum(peak_right-peak_left)) %>%
+    group_by(tfbs) %>% mutate(M9_tfbs_counts = n(), M9_tfbs_FPMbp= (M9_tfbs_counts/sequence_space)*100000) %>%
+    ungroup() %>%
+    select(tfbs, M9_tfbs_counts, M9_tfbs_FPMbp) %>% distinct()
+
+
+LB_tfbs_overlap <- sqldf("SELECT a.*, b.*
+                    FROM LB_only_peaks AS a 
+                    JOIN tfbs_regulondb AS b
+                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
+                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
+    na.omit() %>% mutate(sequence_space = sum(peak_right-peak_left)) %>%
+    group_by(tfbs) %>% mutate(LB_tfbs_counts = n(), LB_tfbs_FPMbp= (LB_tfbs_counts/sequence_space)*100000) %>%
+    ungroup() %>%
+    select(tfbs, LB_tfbs_counts, LB_tfbs_FPMbp) %>% distinct()
+
+#Get TFBS groups
+global_regs <- full_join(M9_tfbs_overlap, LB_tfbs_overlap, by = 'tfbs') %>% 
+    mutate(enrichment = abs(log2(LB_tfbs_FPMbp/M9_tfbs_FPMbp))) %>%
+    replace(., is.na(.),0) %>% 
+    filter(LB_tfbs_FPMbp > 3 & M9_tfbs_FPMbp > 3)
+
+LB_tfs <- full_join(M9_tfbs_overlap, LB_tfbs_overlap, by = 'tfbs') %>%
+    replace(., is.na(.),0) %>%
+    filter(LB_tfbs_FPMbp > 2 & M9_tfbs_FPMbp < 2) %>%
+    select(tfbs, M9_tfbs_FPMbp, LB_tfbs_FPMbp)
+
+M9_tfs <- full_join(M9_tfbs_overlap, LB_tfbs_overlap, by = 'tfbs') %>%
+    replace(., is.na(.),0) %>%
+    filter(LB_tfbs_FPMbp < 2 & M9_tfbs_FPMbp > 2) %>%
+    select(tfbs, M9_tfbs_FPMbp, LB_tfbs_FPMbp)
+
+fun.1 <- function(M9_tfbs_FPMbp) 2(log(M9_tfbs_FPMbp))
+
+
+b <- full_join(M9_tfbs_overlap, LB_tfbs_overlap, by = 'tfbs') %>% 
+    replace(., is.na(.),0) %>%
+    ggplot(aes(x=LB_tfbs_FPMbp, y = M9_tfbs_FPMbp)) +
+    geom_point() +
+    annotation_logticks(base = 2) +
+    #geom_abline(slope = 2, intercept = 0, linetype = 'dashed', color = 'black') +
+    #geom_abline(slope = 1/2, intercept = 0, linetype = 'dashed', color = 'black') +
+    geom_abline(slope = 1, intercept = 0, linetype = 'dashed', color = 'red') +
+    scale_x_continuous(limits = c(-1, 100), trans = 'log2') + 
+    scale_y_continuous(limits = c(-1, 100), trans = 'log2') +
+    labs(x='TFBS Frequency in LB\n(per 100 kb)',
+         y = 'TFBS Frequency in M9\n(per 100 kb)',
+         title = 'TFBs frequency at condition-specific promoters') + 
+    geom_text(data = global_regs, aes(label = tfbs),
+              hjust = 0, vjust = -1, position = position_jitter())
+
+b
+
+ggsave('../../figs/fig2/TF_by_Condition.pdf', units = 'in',
+       height = 5, width = 5)
+
 ```
 
 2E - Location of promoters in genome
@@ -111,12 +206,14 @@ gene_coords <- read.table("../../ref/U00096.2_genes_clean.bed", header = F) %>%
 
 # Promoter peak with position of
 promoter_max_LB <- read.table("../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed", header = F) %>%
-    select(peak_name = V4, peak_max = V8, peak_score = V7, peak_strand =  V6) %>%
+    select(peak_name = V4, peak_max = V8, peak_max_score = V7, peak_score = V5, 
+           peak_strand =  V6, peak_left = V2, peak_right = V3) %>%
     mutate(downstream = ifelse(peak_strand == '+', peak_max + 500, peak_max-500), 
            Condition = "LB") 
 
 promoter_max_M9 <- read.table("../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed", header = F) %>%
-    select(peak_name = V4, peak_max = V8, peak_score = V7, peak_strand =  V6) %>%
+    select(peak_name = V4, peak_max = V8, peak_max_score = V7, peak_score = V5,
+           peak_strand =  V6, peak_left = V2, peak_right = V3) %>%
     mutate(downstream = ifelse(peak_strand == '+', peak_max + 500, peak_max-500), 
            Condition = "M9")
 
@@ -149,7 +246,6 @@ intergenic_overlap_LB <- sqldf("SELECT a.*, b.*
     mutate(Orientation = ifelse(strand==peak_strand, "Sense", "Antisense"), 
            type =  'Intergenic') %>% 
     ungroup()
-
 ```
 
 2E. cont - M9 promoter locations
@@ -179,9 +275,173 @@ intergenic_overlap_M9 <- sqldf("SELECT a.*, b.*
     mutate(Orientation = ifelse(strand == peak_strand, "Sense", "Antisense"), 
            type =  'Intergenic') %>% 
     ungroup()
+
 ```
 
-2E Figure
+See which genes are turned on in M9 and LB
+```{r, eval = F}
+# intergenic_overlap_M9 %>% 
+#     filter(Orientation == 'Sense') %>% 
+#     anti_join(., intergenic_overlap_LB, by = 'gene') %>%
+#     select('gene') %>%
+#     distinct() %>%
+#     semi_join(gene_coords,., by = 'gene') %>% 
+#     mutate(genome = 'U00096.2', fill = '.') %>%
+#     select(genome, Leftbound, Rightbound, gene, fill, strand) %>%
+#     write.table(., "../../processed_data/frag/M9_on_genes.bed", 
+#                 quote = F, row.names = F, col.names = F, sep = '\t') #Gene bed files
+#    # select(gene) %>% write.table(., "../processed_data/frag/M9_on_genes.txt", quote = F, row.names = F, col.names = F, sep = '\t')  #Gene list
+# 
+# 
+# intergenic_overlap_LB %>% 
+#     filter(Orientation == 'Sense') %>% 
+#     anti_join(., intergenic_overlap_M9, by = 'gene') %>%
+#     select('gene') %>%
+#     distinct() %>%
+#     semi_join(gene_coords,., by = 'gene') %>% 
+#     mutate(genome = 'U00096.2', fill = '.') %>%
+#     select(genome, Leftbound, Rightbound, gene, fill, strand) %>%
+#     write.table(., "../../processed_data/frag/LB_on_genes.bed", 
+#                 quote = F, row.names = F, col.names = F, sep = '\t')
+#     #select(gene) %>% write.table(., "../processed_data/frag/LB_on_genes.txt", quote = F, row.names = F, col.names = F, sep = '\t')
+
+#M9 only promoters
+intergenic_overlap_M9 %>% 
+    filter(Orientation == 'Sense') %>% 
+    semi_join(., M9_only_peaks, by = 'peak_name') %>%
+    distinct() %>%
+    mutate(genome = 'U00096.2', fill = '.') %>%
+    select(genome, peak_left, peak_right, peak_name, fill, strand) %>%
+    write.table(., "../../processed_data/frag/M9_on_promoters.bed", 
+                quote = F, row.names = F, col.names = F, sep = '\t')
+
+#LB only promoters          
+intergenic_overlap_LB %>% 
+    filter(Orientation == 'Sense') %>% 
+    semi_join(., LB_only_peaks, by = 'peak_name') %>%
+    distinct() %>%
+    mutate(genome = 'U00096.2', fill = '.') %>%
+    select(genome, peak_left, peak_right, peak_name, fill, strand) %>%
+    write.table(., "../../processed_data/frag/LB_on_promoters.bed",
+                quote = F, row.names = F, col.names = F, sep = '\t')
+
+#Shared promoters 
+intergenic_overlap_M9 %>% 
+    filter(Orientation == 'Sense') %>% 
+    anti_join(., M9_only_peaks, by = 'peak_name') %>%
+    distinct() %>%
+    mutate(genome = 'U00096.2', fill = '.') %>%
+    select(genome, peak_left, peak_right, peak_name, fill, strand) %>%
+    write.table(., "../../processed_data/frag/M9_shared_promoters.bed", 
+                quote = F, row.names = F, col.names = F, sep = '\t')
+
+```
+
+generate fastas to plug into gofeat, blast expectation value 10 (http://computationalbiology.ufpa.br/gofeat/)
+```{bash}
+
+<!-- #get sequences of genes sense-regulated by active promoters only -->
+<!-- bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/M9_on_genes.bed -s -fo ../../processed_data/frag/M9_on_genes.fasta -->
+
+<!-- bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/LB_on_genes.bed -s -fo ../../processed_data/frag/LB_on_genes.fasta -->
+
+bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/M9_on_promoters.bed -s -fo ../../processed_data/frag/M9_on_promoters.fasta
+
+bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/LB_on_promoters.bed -s -fo ../../processed_data/frag/LB_on_promoters.fasta
+
+bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/M9_shared_promoters.bed -s -fo ../../processed_data/frag/M9_shared_promoters.fasta
+
+```
+
+Merge unique promoters with regulondb tfbs
+
+```{}
+M9_tfbs_overlap <- sqldf("SELECT a.*, b.*
+                    FROM promoter_max_M9 AS a 
+                    JOIN tfbs_regulondb AS b
+                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
+                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
+    na.omit() %>% 
+    mutate(sequence_space = sum(peak_right-peak_left)) %>%
+    group_by(tfbs) %>% 
+    mutate(M9_tfbs_counts = n(), 
+           M9_tfbs_FPMbp= (M9_tfbs_counts/sequence_space)*1000000) %>%
+    ungroup() %>%
+    select(tfbs, M9_tfbs_counts, M9_tfbs_FPMbp) %>% 
+    distinct()
+
+LB_tfbs_overlap <- sqldf("SELECT a.*, b.*
+                    FROM promoter_max_LB AS a 
+                    JOIN tfbs_regulondb AS b
+                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
+                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
+    na.omit() %>% 
+    mutate(sequence_space = sum(peak_right-peak_left)) %>%
+    group_by(tfbs) %>%
+    mutate(LB_tfbs_counts = n(), 
+           LB_tfbs_FPMbp = (LB_tfbs_counts/sequence_space)*1000000) %>%
+    ungroup() %>%
+    select(tfbs, LB_tfbs_counts, LB_tfbs_FPMbp) %>% 
+    distinct()
+
+a <- full_join(M9_tfbs_overlap, LB_tfbs_overlap, by = 'tfbs') %>% 
+    replace(., is.na(.),0) %>%
+    ggplot(aes(x = LB_tfbs_FPMbp, y = M9_tfbs_FPMbp)) + 
+    geom_point() + 
+    scale_x_log10() + scale_y_log10() + 
+    geom_abline(slope = 1, linetype = 'dashed', color = 'red') +
+    labs(x='TFBS Frequency in LB', 
+         y = 'TFBS Frequency in M9', 
+         title = 'TFBS frequency at all promoters')
+
+```
+
+
+# How many promoters are annotated for each group?
+```{}
+annotated_M9 <- sqldf("SELECT a.*, b.*
+                    FROM M9_only_peaks AS a 
+                    JOIN tfbs_regulondb AS b
+                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
+                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
+    na.omit() %>% 
+    mutate(sequence_space = sum(peak_right-peak_left)) %>%
+    group_by(tfbs) %>%
+    mutate(M9_tfbs_counts = n(), 
+           M9_tfbs_FPMbp = (M9_tfbs_counts/sequence_space)*100000) %>%
+    ungroup() %>% 
+    select(peak_name) %>% 
+    distinct() %>% 
+    nrow()
+
+
+annotated_LB <- sqldf("SELECT a.*, b.*
+                    FROM LB_only_peaks AS a 
+                    JOIN tfbs_regulondb AS b
+                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
+                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
+    na.omit() %>% 
+    mutate(sequence_space = sum(peak_right-peak_left)) %>%
+    group_by(tfbs) %>% 
+    mutate(LB_tfbs_counts = n(), 
+           LB_tfbs_FPMbp= (LB_tfbs_counts/sequence_space)*100000) %>%
+    ungroup() %>% 
+    select(peak_name) %>% 
+    distinct() %>% 
+    nrow()
+
+```
+
+```{}
+#Sites overlapping M9
+bedtools intersect -a ../../processed_data/frag/M9_on_promoters.bed -b ../../processed_data/endo_scramble/tf_sites.bed > ../../processed_data/frag/M9_TFBS_overlaps.bed
+
+#Sites overlapping LB
+bedtools intersect -a ../../processed_data/frag/LB_on_promoters.bed -b ../../processed_data/endo_scramble/tf_sites.bed > ../../processed_data/frag/LB_TFBS_overlaps.bed
+
+```
+
+2F Figure
 ```{r}
 rbind(intergenic_overlap_M9, intragenic_overlap_M9, intergenic_overlap_LB, intragenic_overlap_LB) %>%
     select(type, Orientation, Condition) %>% 
@@ -194,22 +454,21 @@ rbind(intergenic_overlap_M9, intragenic_overlap_M9, intergenic_overlap_LB, intra
           axis.title.x = element_text(size = 20),
           axis.text.y = element_text(size = 20), 
           axis.title.y = element_text(size = 20), 
-          legend.text = element_text(size = 20)) +
+          legend.text = element_text(size = 20),
+          legend.position = 'bottom') +
     labs(x = "Promoter Type", y = "Count", 
-         color = "Orientation", 
+         fill = "Promoter orientation relative to gene", 
          title = "Promoter Classification") +
-    facet_wrap(~type)
+    facet_wrap(~type) +
+    guides(fill = guide_legend(title.position = 'bottom'))
 
 ggsave('../../figs/fig2/promoter_location_genome.pdf', units = 'in',
-       height = 5, width = 7)
+       height = 5, width = 5)
 ```
 
-2F - Antisense effects across gene bodies
+2G - Antisense effects across gene bodies
 ```{r}
 positions <- seq(10,1450,10)
-
-#is.nan.data.frame <- function(x)
-#do.call(cbind, lapply(x, is.nan))
 
 plus_RNA_exp <- read.table("../../processed_data/frag/m9/plus_transcriptome_counts.txt", 
                            skip = 3, fill = TRUE, sep = '\t', header = F) %>%
@@ -229,25 +488,35 @@ minus_RNA_exp <- read.csv("../../processed_data/frag/m9/minus_transcriptome_coun
 minus_RNA_exp[is.na(minus_RNA_exp)] <- 0
 
 names(minus_RNA_exp) <- positions
-minus_sense_RNA <-minus_RNA_exp[c(1:581),]
-minus_anti_RNA <-minus_RNA_exp[c(582:841),]
-minus_dual_RNA <- minus_RNA_exp[c(842:957),]
+minus_sense_RNA <-minus_RNA_exp[c(1:581), ]
+minus_anti_RNA <-minus_RNA_exp[c(582:841), ]
+minus_dual_RNA <- minus_RNA_exp[c(842:957), ]
 
 RNA_mean_sense <- rbind(plus_sense_RNA, minus_sense_RNA) %>%
-    as.matrix() %>% colMedians(na.rm = TRUE) %>%
-    rbind(positions, .) %>% t() %>% as.data.frame() %>% 
+    as.matrix() %>% 
+    colMedians(na.rm = TRUE) %>%
+    rbind(positions, .) %>% 
+    t() %>% 
+    as.data.frame() %>% 
     mutate(type = 'Sense Regulated')
 names(RNA_mean_sense) <- c('position', 'coverage', 'Type')
 
 RNA_mean_anti <- rbind(plus_anti_RNA, minus_anti_RNA) %>%
-    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-    rbind(positions, .) %>% t() %>% as.data.frame() %>% 
+    as.matrix() %>% 
+    colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% 
+    t() %>% 
+    as.data.frame() %>% 
     mutate(type = 'Antisense Regulated')
+
 names(RNA_mean_anti) <- c('position', 'coverage', 'Type')
 
 RNA_mean_dual <- rbind(plus_dual_RNA, minus_dual_RNA) %>%
-    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-    rbind(positions, .) %>% t() %>% as.data.frame() %>% 
+    as.matrix() %>% 
+    colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% 
+    t() %>% 
+    as.data.frame() %>% 
     mutate(type = 'Dual Regulated')
 names(RNA_mean_dual) <- c('position', 'coverage', 'Type')
 
@@ -270,7 +539,7 @@ a <- rbind(RNA_mean_sense, RNA_mean_anti, RNA_mean_dual) %>%
 ```
 
 
-2F - cont. Get promoter score across gene body
+2G- cont. Get promoter score across gene body
 ```{r}
 positions <- seq(10,1450,10)
 plus_prom_exp <- read.table("../../processed_data/frag/m9/plus_promoter_counts.txt", 
@@ -285,7 +554,8 @@ plus_dual_prom <- plus_prom_exp[c(850:967),]
 
 
 minus_prom_exp <- read.csv("../../processed_data/frag/m9/minus_promoter_counts.txt", 
-                           skip = 3, sep = '\t', header = F) %>% select(V1:V145) 
+                           skip = 3, sep = '\t', header = F) %>%
+    select(V1:V145) 
 
 names(minus_prom_exp) <- positions
 minus_sense_prom <-minus_prom_exp[c(1:581),]
@@ -294,22 +564,28 @@ minus_dual_prom <- minus_prom_exp[c(842:957),]
 
 
 prom_mean_sense <- rbind(plus_sense_prom, minus_sense_prom) %>%
-    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-    rbind(positions, .) %>% t() %>%
+    as.matrix() %>% 
+    colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% 
+    t() %>%
     as.data.frame() %>% 
     mutate(type = 'Sense Regulated \n (N=1,174)')
 names(prom_mean_sense) <- c('position', 'coverage', 'Type')
 
 prom_mean_dual <- rbind(plus_dual_prom, minus_dual_prom) %>%
-    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-    rbind(positions, .) %>% t() %>%
+    as.matrix() %>% 
+    colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% 
+    t() %>%
     as.data.frame() %>% 
     mutate(type = 'Dual Regulated \n (N=234)')
 names(prom_mean_dual) <- c('position', 'coverage', 'Type')
 
 prom_mean_anti <- rbind(plus_anti_prom, minus_anti_prom) %>%
-    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
-    rbind(positions, .) %>% t() %>%
+    as.matrix() %>% 
+    colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% 
+    t() %>%
     as.data.frame() %>% 
     mutate(type = 'Antisense Regulated \n (N=516)')
 names(prom_mean_anti) <- c('position', 'coverage', 'Type')
@@ -339,4 +615,108 @@ ggsave('../../figs/fig2/metagene_activity.pdf', units = 'in',
        height = 3.5, width = 13)
 ```
 
+Looking at M9 peak scores and expression
+```{r}
+library(wesanderson)
+pal <- wes_palette('Zissou1', 10, type = 'continuous')
+
+sense_exp <- intergenic_overlap_M9 %>% 
+    mutate(sense_exp = peak_score) %>% 
+    filter(Orientation == 'Sense') %>% 
+    select(gene, sense_exp) %>% group_by(gene) %>% 
+    mutate(total_sense = sum(sense_exp)) %>% 
+    ungroup() %>% 
+    distinct()
+
+antisense_exp <- intragenic_overlap_M9 %>% 
+    mutate(antisense_exp = peak_score) %>%
+    filter(Orientation == 'Antisense') %>%
+    select(gene, antisense_exp) 
+
+antisense_exp <- intergenic_overlap_M9 %>% 
+    mutate(antisense_exp = peak_score) %>% 
+    filter(Orientation == 'Antisense') %>% 
+    select(gene, antisense_exp) %>% 
+    rbind(antisense_exp,.) %>%
+    group_by(gene) %>%
+    mutate(total_antisense = sum(antisense_exp)) %>% 
+    ungroup() %>% 
+    distinct()
+
+gene_coverage <-  read.table("../../processed_data/RNAseq_M9/gene_coverage_M9.bed", header = F) %>% 
+    select(gene='V4', coverage='V5', left = 'V2', right = 'V3') %>% 
+    mutate(length = right-left, RPK = coverage/length,
+           gene = gsub('NC_000913.2:', '', .$gene))
+
+promVcoverage <- full_join(sense_exp, antisense_exp, by = 'gene') %>%
+    left_join(., gene_coverage, by = 'gene') %>%
+    replace(., is.na(.), 0)
+
+
+# # What are the distributions of expression levels
+# 
+# a <- ggplot(promVcoverage, aes(sense_exp)) +
+#     geom_histogram(fill = 'navyblue', bins = 50) + 
+#     scale_x_log10() + 
+#     annotation_logticks(sides = 'bl') + 
+#     scale_y_log10()
+# 
+# b <- ggplot(promVcoverage, aes(antisense_exp)) + 
+#     geom_histogram(fill = 'firebrick1', bins = 50) + 
+#     scale_x_log10() + scale_y_log10() + annotation_logticks(sides = 'bl')
+# 
+# plot_grid(a, b, ncol = 1)
+
+sense_quant <- c(quantile(promVcoverage$sense_exp))[2:5]
+antisense_quant <- c(quantile(promVcoverage$antisense_exp))[3:5]
+promVcoverage <- full_join(sense_exp, antisense_exp, by = 'gene') %>% 
+    full_join(., gene_coverage, by = 'gene') %>% 
+    replace(., is.na(.),0)
+
+
+levels <- c('Low','Medium','High')
+promVcoverage$sense_levels <- as.character(cut(promVcoverage$sense_exp, 
+                                               breaks = sense_quant, labels=levels)) %>% 
+    replace(., is.na(.),'None') %>%
+    as.factor() 
+
+levels <- c('Low','High')
+promVcoverage$antisense_levels <- as.character(cut(promVcoverage$antisense_exp, 
+                                                   breaks = antisense_quant, 
+                                                   labels=levels)) %>% 
+    replace(., is.na(.),'None') %>% 
+    as.factor()
+
+
+promVcoverage$antisense_levels <- factor(promVcoverage$antisense_levels,
+                                         levels = c("None", "Low", "High"))
+promVcoverage$sense_levels <- factor(promVcoverage$sense_levels, 
+                                     levels = c("None", "Low", "Medium", "High"))
+
+promVcoverage %>% 
+    group_by(sense_levels, antisense_levels) %>%
+    mutate(median_RPK = median(RPK), 
+           median_coverage = median(coverage)) %>% 
+    ungroup() %>%
+    select(sense_levels, median_RPK, median_coverage, antisense_levels) %>% 
+    distinct() %>%
+    ggplot(aes(sense_levels, antisense_levels, fill = log10(median_RPK))) + 
+    geom_tile() + 
+    geom_text(aes(label = signif(median_RPK, 3)), size = 8) + 
+    scale_fill_gradientn(colors = pal) +
+    labs(x = 'Sense Promoter Activity', 
+         y = 'Antisense Promoter Activity', 
+         fill = 'log10(Median RPK)') +
+    theme(axis.title.x = element_text(size = 20),
+          axis.text.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20),
+          legend.text = element_text(size = 20),
+          legend.title = element_text(size = 20),
+          legend.position = 'bottom') +
+    guides(fill = guide_legend(title.position = 'bottom'))
+
+ggsave('../../figs/fig2/CoveragebyPromoterStr.pdf', units = 'in',
+       height = 4, width = 7.5)
+```
 
