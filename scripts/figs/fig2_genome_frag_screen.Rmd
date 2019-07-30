@@ -101,7 +101,7 @@ bedtools intersect -v -s -a ../../processed_data/frag/m9/U00096.2_M9_plus_minus_
 
 bedtools intersect -s -a ../../processed_data/frag/m9/U00096.2_M9_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -wo > ../../processed_data/frag/Shared_peaks.bed
 
-#get sequences of M9 only
+# get sequences of M9 only
 bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/Unshared_M9_peaks.bed -s -fo ../../processed_data/frag/Unshared_M9_peaks.fasta
 
 bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/Unshared_LB_peaks.bed -s -fo ../../processed_data/frag/Unshared_LB_peaks.fasta
@@ -138,10 +138,14 @@ M9_tfbs_overlap <- sqldf("SELECT a.*, b.*
                     JOIN tfbs_regulondb AS b
                     ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
                     OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
-    na.omit() %>% mutate(sequence_space = sum(peak_right-peak_left)) %>%
-    group_by(tfbs) %>% mutate(M9_tfbs_counts = n(), M9_tfbs_FPMbp= (M9_tfbs_counts/sequence_space)*100000) %>%
+    na.omit() %>%
+    mutate(sequence_space = sum(peak_right - peak_left)) %>%
+    group_by(tfbs) %>% 
+    mutate(M9_tfbs_counts = n(), 
+           M9_tfbs_FPMbp = (M9_tfbs_counts / sequence_space) * 100000) %>%
     ungroup() %>%
-    select(tfbs, M9_tfbs_counts, M9_tfbs_FPMbp) %>% distinct()
+    select(tfbs, M9_tfbs_counts, M9_tfbs_FPMbp) %>% 
+    distinct()
 
 
 LB_tfbs_overlap <- sqldf("SELECT a.*, b.*
@@ -149,14 +153,18 @@ LB_tfbs_overlap <- sqldf("SELECT a.*, b.*
                     JOIN tfbs_regulondb AS b
                     ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
                     OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
-    na.omit() %>% mutate(sequence_space = sum(peak_right-peak_left)) %>%
-    group_by(tfbs) %>% mutate(LB_tfbs_counts = n(), LB_tfbs_FPMbp= (LB_tfbs_counts/sequence_space)*100000) %>%
+    na.omit() %>% 
+    mutate(sequence_space = sum(peak_right - peak_left)) %>%
+    group_by(tfbs) %>% 
+    mutate(LB_tfbs_counts = n(), 
+           LB_tfbs_FPMbp = (LB_tfbs_counts / sequence_space) * 100000) %>%
     ungroup() %>%
-    select(tfbs, LB_tfbs_counts, LB_tfbs_FPMbp) %>% distinct()
+    select(tfbs, LB_tfbs_counts, LB_tfbs_FPMbp) %>% 
+    distinct()
 
 #Get TFBS groups
 global_regs <- full_join(M9_tfbs_overlap, LB_tfbs_overlap, by = 'tfbs') %>% 
-    mutate(enrichment = abs(log2(LB_tfbs_FPMbp/M9_tfbs_FPMbp))) %>%
+    mutate(enrichment = abs(log2(LB_tfbs_FPMbp / M9_tfbs_FPMbp))) %>%
     replace(., is.na(.),0) %>% 
     filter(LB_tfbs_FPMbp > 3 & M9_tfbs_FPMbp > 3)
 
@@ -178,8 +186,6 @@ b <- full_join(M9_tfbs_overlap, LB_tfbs_overlap, by = 'tfbs') %>%
     ggplot(aes(x=LB_tfbs_FPMbp, y = M9_tfbs_FPMbp)) +
     geom_point() +
     annotation_logticks(base = 2) +
-    #geom_abline(slope = 2, intercept = 0, linetype = 'dashed', color = 'black') +
-    #geom_abline(slope = 1/2, intercept = 0, linetype = 'dashed', color = 'black') +
     geom_abline(slope = 1, intercept = 0, linetype = 'dashed', color = 'red') +
     scale_x_continuous(limits = c(-1, 100), trans = 'log2') + 
     scale_y_continuous(limits = c(-1, 100), trans = 'log2') +
