@@ -97,7 +97,7 @@ scramble_merged %>%
          title = 'merged scramble sites') +
     theme(legend.position = 'top', aspect.ratio = 1)
 
-ggsave('../../figs/fig5/fig5d_regulondb_concordance.pdf', units = 'in',
+ggsave('../../figs/fig5/fig5c_regulondb_concordance.pdf', units = 'in',
        width = 8, height = 5)
 ```
 
