@@ -423,6 +423,7 @@ Identify codon bias between groups
 signif_codon <- filter(codon_table_full, p.val.adjust < .05)
 
 temp <- codon_stats %>% 
+    group_by(amino_acid) %>% 
     mutate(codon_frequency_prom = promoter_counts / sum(promoter_counts),
            codon_frequency_ctrl = control_counts / sum(control_counts),
            enrichment = log2(codon_frequency_prom / codon_frequency_ctrl),

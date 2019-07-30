@@ -4,34 +4,26 @@ output: html_notebook
 ---
 
 ```{r setup, include=FALSE}
-# paths <- .libPaths()
-# .libPaths(c(paths[2], paths[1]))
-
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 require(cowplot)
 options(stringsAsFactors = F)
 options(scipen = 10000)
-
 data <-  read.table('../../processed_data/endo_scramble/endo_scramble_expression_formatted_std.txt', 
                              header = T)
 ttest <- read.table('../../processed_data/endo_scramble/endo_scramble_ttests.txt', header = T)
-
 data <- left_join(data, select(ttest, -tss_name), by = 'name')
-
 ```
 
 Figure 5A
 ```{r}
-repressor_color <- '#000066'
-activator_color <- '#FFD700'
-
+repressor_color <- '#FFD700'
+activator_color <- '#000066'
 data <- data %>% 
     mutate(site_type_ttest_signif = ifelse(significant == T, site_type_ttest, NA)) %>% 
-    mutate(site_type_signif = case_when(.$site_type_ttest_signif == 'increased' ~ 'activating',
-                                 .$site_type_ttest_signif == 'reduced' ~ 'repressing'))
-
+    mutate(site_type_signif = case_when(.$site_type_ttest_signif == 'increased' ~ 'repressing',
+                                 .$site_type_ttest_signif == 'reduced' ~ 'activating'))
 data %>% 
     filter(!is.na(site_type_signif)) %>% 
     ggplot(aes(unscrambled_exp, relative_exp)) + 
@@ -49,9 +41,26 @@ data %>%
           axis.title = element_text(size = 20),
           legend.text = element_text(size = 20),
           legend.title = element_text(size = 20))
-
 ggsave('../../figs/fig5/fig5a_scramble_ttest.pdf', unit = 'in', 
        height = 5, width = 7)
+```
+
+```{r}
+upreg <- data %>% na.omit() %>% filter(significant == T & site_type_ttest == 'increased') %>%
+  select(scramble_start, relative_exp) %>%
+    mutate(scramble_start = ((scramble_start-120)), "Type"="Repressing")
+downreg <- data %>% filter(significant == T & site_type_ttest == 'reduced') %>% 
+select(scramble_start, relative_exp) %>%
+    mutate(scramble_start = ((scramble_start-120)), "Type"="Activating")
+rbind(upreg, downreg) %>%
+  ggplot(., aes(x=scramble_start)) +
+    geom_density(aes(fill=Type), alpha = .7, bw = 2.5) +
+    geom_vline(xintercept = c(0,-20,-40,-60,-80,-100), linetype="dashed", alpha=.6) +
+    scale_x_continuous(breaks = c(0,-20,-40,-60,-80,-100)) +
+    scale_fill_manual(values = c("#FDE725FF","#482878FF")) +
+    labs(x="Scramble Position",
+         y = "Density", 
+         title = "Distribution of Sequences that Modulate Expression")
 ```
 
 ```{r}
@@ -60,10 +69,11 @@ data %>%
     tally()
 ```
 
-Figure5D - Looking at disagreed scrambles
+Figure5C - Looking at disagreed scrambles
 
 ```{r}
-scramble_merged <- read.table("../../processed_data/endo_scramble/scramble_merged_sites.txt", header = T)
+scramble_merged <- read.table("../../processed_data/endo_scramble/scramble_merged_sites.txt", 
+                              header = T)
 
 scramble_merged %>% 
     filter(tf_effect == '-' | tf_effect == '+' | is.na(tf_effect)) %>%
@@ -82,94 +92,32 @@ ggsave('../../figs/fig5/fig5d_regulondb_concordance.pdf', units = 'in',
        width = 8, height = 5)
 ```
 
-
-```{r}
-# supplementary figure, distribution of concordance for repressors by the scramble position
-# relative to the TSS
-scramble_merged_parts <- scramble_merged %>% 
-    mutate(scramble_list = strsplit(scrambles, split = ',TSS')) %>% 
-    unnest(scramble_list) %>% 
-    mutate(scramble_part = gsub('TSS', '', scramble_list)) %>% 
-    mutate(scramble_part = paste0('TSS', scramble_part)) %>% 
-    mutate(scramble_part = gsub('TSSneg', 'neg', scramble_part)) %>% 
-    select(-scramble_list) %>% 
-    left_join(select(data, name, scramble_pos_rel_tss), by = c('scramble_part' = 'name'))
-```
-
-
-```{r, eval = F}
-scramble_merged_parts %>% 
-    filter(site_type == 'reduced', !is.na(tf_concordance)) %>%
-    ggplot(aes(scramble_pos_rel_tss)) + 
-    geom_bar(aes(fill=tf_concordance)) +
-    scale_fill_manual(values = c('#FFBC42', '#0496FF'), na.value = 'gray38') +
-    labs(fill = 'TF concordance',
-         x = 'scramble position relative to TSS',
-         title = 'Repressors')
-```
-
-
-```{r, eval = F}
-scramble_merged_parts %>% 
-    filter(site_type == 'increased', !is.na(tf_concordance)) %>%
-    ggplot(aes(scramble_pos_rel_tss)) + 
-    geom_bar(aes(fill=tf_concordance)) +
-    scale_fill_manual(values = c('#FFBC42', '#0496FF'), na.value = 'gray38') +
-    labs(fill = 'TF concordance',
-         x = 'scramble position relative to TSS',
-         title = 'Activators')
-```
-
-```{r, eval = F}
-# length of scrambles
-scramble_merged %>% 
-    mutate(length = scramble_end_pos - scramble_start_pos) %>% 
-    mutate(site_type_mod = case_when(.$site_type == 'increased' ~ 'Activating',
-                                 .$site_type == 'reduced' ~ 'Repressing')) %>% 
-    ggplot(aes(length)) + 
-    geom_histogram(aes(fill = site_type_mod), position = 'dodge', binwidth = 10) +
-    scale_fill_manual(values = c(repressor_color, activator_color), na.value = 'gray65') +
-    scale_x_continuous(breaks = seq(0, 100, 10)) +
-    labs(fill = '', x = 'merged scramble length (bp)')
-```
-
-```{r, eval = F}
-# effect size as function of length
-scramble_merged_parts %>% 
-    mutate(length = scramble_end_pos - scramble_start_pos,
-           length_bin = cut(length, breaks = seq(0, 100, 10)),
-           site_type_mod = case_when(.$site_type == 'increased' ~ 'Activating',
-                                 .$site_type == 'reduced' ~ 'Repressing')) %>% 
-    left_join(select(data, name, relative_exp), by = c('scramble_part' = 'name')) %>% 
-    ggplot(aes(length_bin, relative_exp)) + 
-    geom_boxplot(aes(fill = site_type_mod), position = 'dodge') +
-    scale_y_log10() + annotation_logticks(sides = 'l') +
-    scale_fill_manual(values = c(repressor_color, activator_color), na.value = 'gray65') + 
-    labs(fill = '',
-         x = 'merged scramble length (bp)', 
-         y = 'relative expression')
-```
-
 5D - FadR scanning mutagenesis
+
 ```{r}
 #TSS_4788_storz_regulondb,1234128,+ fadR gene
 data %>% 
-    filter(category != 'negative') %>% 
     filter(tss_name == 'TSS_4788_storz_regulondb') %>%
-    mutate(scramble_start = (scramble_start - 120),
+    mutate(scramble_start = (scramble_start-120),
            relative_exp = relative_exp,
            Type = ifelse(relative_exp > 1, 'Repressing', 'Activating')) %>% 
     ggplot(aes(scramble_start, relative_exp)) +
-    geom_vline(xintercept = c(0, -20, -40, -60, -80, -100, -120), linetype = "dashed", alpha = 0.6) +
-    geom_bar(aes(fill = Type), stat = "identity", color = 'black', alpha = 0.8) +
+    geom_vline(xintercept = c(0,-20,-40,-60,-80,-100, -120),
+               linetype="dashed", alpha=.6) +
+    geom_bar(aes(fill=Type),stat="identity", color = 'black', alpha = .8) +
     scale_fill_manual(values = c("#ffd700", "#000066")) +
-    geom_hline(yintercept = 1) + annotation_logticks(sides = "l") +
-    scale_y_log10(limits = c(0.2, 5)) +
-    labs(x = 'Scramble Position', 
-         y= 'Relative Expression to WT', 
+    geom_hline(yintercept = 1) +
+    annotation_logticks(sides="l") +
+    scale_y_log10(limits=c(.1,10)) +
+    labs(x = 'Scramble Position',
+         y= 'Relative Expression to WT',
          color = '',
-         title = "Mutational scanning across PfadR")
+         title = "Mutational scanning across PfadR") +
+    theme(axis.text.x = element_text(size = 24), 
+        axis.text.y = element_text(size = 24),
+        axis.title.x.bottom = element_text(size = 24),
+        axis.title.y.left = element_text(size = 24))
 
-ggsave('../../figs/fig5/pfadr.pdf', units = 'in',
+ggsave('../../figs/fig5/fadR_lRegulation.pdf', units = 'in',
       height = 4.5, width = 8)
 ```

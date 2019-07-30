@@ -67,7 +67,7 @@ test_cast <- tss_data %>%
     group_by(tss_name) %>% 
     mutate(num_variants = n()) %>%
     filter(num_variants > 20) %>% 
-    select(-num_variants) %>% mutate(scramble_start = scramble_start-120) %>%
+    select(-num_variants) %>% mutate(scramble_start = scramble_start-120, relative_exp = log2(relative_exp)) %>%
     dcast(., tss_name+relative_exp~scramble_start) %>%
     select(-relative_exp, -NA) %>%
     group_by(tss_name) %>%
@@ -112,7 +112,7 @@ ggsave('../../figs/fig4/scramble_heatmap.pdf', units = 'in',
 # PlacZ
 tss_data %>% 
     filter(tss_name == 'TSS_1459_storz_regulondb') %>%
-    mutate(scramble_start = (scramble_start-120),
+    mutate(scramble_start = (scramble_start - 120),
            relative_exp = relative_exp,
            Type = ifelse(relative_exp > 1, 'Repressing', 'Activating')) %>% 
     ggplot(aes(scramble_start, relative_exp)) +
@@ -133,12 +133,12 @@ tss_data %>%
 ggsave('../../figs/fig4/placz.pdf', units = 'in', width = 8, height = 4.5)
 ```
 
-
+Figure 4C part 2 
 ```{r}
 #relBE
 tss_data %>% 
     filter(tss_name == 'TSS_6296_wanner') %>%
-    mutate(scramble_start = (scramble_start-120),
+    mutate(scramble_start = (scramble_start - 120),
            relative_exp = relative_exp,
            Type = ifelse(relative_exp > 1, 'Repressing', 'Activating')) %>% 
     ggplot(aes(scramble_start, relative_exp)) +
@@ -157,33 +157,6 @@ tss_data %>%
           axis.title.y.left = element_text(size = 24))
 
 ggsave('../../figs/fig4/relbe.pdf', units = 'in', width = 8, height = 4.5)
-```
-
-Figure 4D - Uncharacterized promoter Dissection
-```{r}
-#TSS_13441_storz_wanner, rpsL ribosomal subunit S12 https://biocyc.org/gene?orgid=ECOLI&id=EG10911
-tss_data %>% 
-    filter(tss_name == 'TSS_13441_storz_wanner') %>%
-    mutate(scramble_start = (scramble_start - 120),
-           relative_exp = relative_exp,
-           Type = ifelse(relative_exp > 1, 'Repressing', 'Activating')) %>% 
-    ggplot(aes(scramble_start, relative_exp)) +
-    geom_vline(xintercept = c(0, -20, -40, -60, -80, -100, -120), linetype = "dashed", alpha = 0.6) +
-    geom_bar(aes(fill = Type), stat = "identity", color = 'black', alpha = 0.8) +
-    scale_fill_manual(values = c("#ffd700", "#000066")) +
-    geom_hline(yintercept = 1) + annotation_logticks(sides = "l") +
-    scale_y_log10(limits = c(.05, 10)) +
-    labs(x = 'Scramble Starting Position',
-         y= 'Relative Expression to WT', 
-         color = '', 
-         title = "Mutational scanning across PrpsL") +
-      theme(axis.text.x = element_text(size = 24), 
-            axis.text.y = element_text(size = 24),
-            axis.title.x.bottom = element_text(size = 24),
-            axis.title.y.left = element_text(size = 24))
-
-ggsave('../../figs/fig4/rpsL_novelRegulation.pdf', units = 'in',
-      height = 4.5, width = 8)
 ```
 
 
@@ -214,5 +187,30 @@ ggsave('../../figs/fig4/cfa_novelRegulation.pdf', units = 'in',
 ```
 
 
+Figure 4D - Uncharacterized promoter Dissection
+```{r}
+#TSS_13441_storz_wanner, rpsL ribosomal subunit S12 https://biocyc.org/gene?orgid=ECOLI&id=EG10911
+tss_data %>% 
+    filter(tss_name == 'TSS_13441_storz_wanner') %>%
+    mutate(scramble_start = (scramble_start - 120),
+           relative_exp = relative_exp,
+           Type = ifelse(relative_exp > 1, 'Repressing', 'Activating')) %>% 
+    ggplot(aes(scramble_start, relative_exp)) +
+    geom_vline(xintercept = c(0, -20, -40, -60, -80, -100, -120), linetype = "dashed", alpha = 0.6) +
+    geom_bar(aes(fill = Type), stat = "identity", color = 'black', alpha = 0.8) +
+    scale_fill_manual(values = c("#ffd700", "#000066")) +
+    geom_hline(yintercept = 1) + annotation_logticks(sides = "l") +
+    scale_y_log10(limits = c(.03, 10)) +
+    labs(x = 'Scramble Starting Position',
+         y= 'Relative Expression to WT', 
+         color = '', 
+         title = "Mutational scanning across PrpsL") +
+      theme(axis.text.x = element_text(size = 24), 
+            axis.text.y = element_text(size = 24),
+            axis.title.x.bottom = element_text(size = 24),
+            axis.title.y.left = element_text(size = 24))
 
+ggsave('../../figs/fig4/rpsL_novelRegulation.pdf', units = 'in',
+      height = 4.5, width = 8)
+```
 

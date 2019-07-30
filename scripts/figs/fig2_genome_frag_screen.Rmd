@@ -193,7 +193,6 @@ b
 
 ggsave('../../figs/fig2/TF_by_Condition.pdf', units = 'in',
        height = 5, width = 5)
-
 ```
 
 2E - Location of promoters in genome
@@ -278,34 +277,9 @@ intergenic_overlap_M9 <- sqldf("SELECT a.*, b.*
 
 ```
 
-See which genes are turned on in M9 and LB
-```{r, eval = F}
-# intergenic_overlap_M9 %>% 
-#     filter(Orientation == 'Sense') %>% 
-#     anti_join(., intergenic_overlap_LB, by = 'gene') %>%
-#     select('gene') %>%
-#     distinct() %>%
-#     semi_join(gene_coords,., by = 'gene') %>% 
-#     mutate(genome = 'U00096.2', fill = '.') %>%
-#     select(genome, Leftbound, Rightbound, gene, fill, strand) %>%
-#     write.table(., "../../processed_data/frag/M9_on_genes.bed", 
-#                 quote = F, row.names = F, col.names = F, sep = '\t') #Gene bed files
-#    # select(gene) %>% write.table(., "../processed_data/frag/M9_on_genes.txt", quote = F, row.names = F, col.names = F, sep = '\t')  #Gene list
-# 
-# 
-# intergenic_overlap_LB %>% 
-#     filter(Orientation == 'Sense') %>% 
-#     anti_join(., intergenic_overlap_M9, by = 'gene') %>%
-#     select('gene') %>%
-#     distinct() %>%
-#     semi_join(gene_coords,., by = 'gene') %>% 
-#     mutate(genome = 'U00096.2', fill = '.') %>%
-#     select(genome, Leftbound, Rightbound, gene, fill, strand) %>%
-#     write.table(., "../../processed_data/frag/LB_on_genes.bed", 
-#                 quote = F, row.names = F, col.names = F, sep = '\t')
-#     #select(gene) %>% write.table(., "../processed_data/frag/LB_on_genes.txt", quote = F, row.names = F, col.names = F, sep = '\t')
-
-#M9 only promoters
+See which promoters are turned on in M9 and LB
+```{r}
+# M9 only promoters
 intergenic_overlap_M9 %>% 
     filter(Orientation == 'Sense') %>% 
     semi_join(., M9_only_peaks, by = 'peak_name') %>%
@@ -334,110 +308,15 @@ intergenic_overlap_M9 %>%
     select(genome, peak_left, peak_right, peak_name, fill, strand) %>%
     write.table(., "../../processed_data/frag/M9_shared_promoters.bed", 
                 quote = F, row.names = F, col.names = F, sep = '\t')
-
 ```
 
 generate fastas to plug into gofeat, blast expectation value 10 (http://computationalbiology.ufpa.br/gofeat/)
 ```{bash}
-
-<!-- #get sequences of genes sense-regulated by active promoters only -->
-<!-- bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/M9_on_genes.bed -s -fo ../../processed_data/frag/M9_on_genes.fasta -->
-
-<!-- bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/LB_on_genes.bed -s -fo ../../processed_data/frag/LB_on_genes.fasta -->
-
 bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/M9_on_promoters.bed -s -fo ../../processed_data/frag/M9_on_promoters.fasta
 
 bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/LB_on_promoters.bed -s -fo ../../processed_data/frag/LB_on_promoters.fasta
 
 bedtools getfasta -fi ../../ref/Escherichia_coli_K-12_MG1655.fasta -bed ../../processed_data/frag/M9_shared_promoters.bed -s -fo ../../processed_data/frag/M9_shared_promoters.fasta
-
-```
-
-Merge unique promoters with regulondb tfbs
-
-```{}
-M9_tfbs_overlap <- sqldf("SELECT a.*, b.*
-                    FROM promoter_max_M9 AS a 
-                    JOIN tfbs_regulondb AS b
-                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
-                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
-    na.omit() %>% 
-    mutate(sequence_space = sum(peak_right-peak_left)) %>%
-    group_by(tfbs) %>% 
-    mutate(M9_tfbs_counts = n(), 
-           M9_tfbs_FPMbp= (M9_tfbs_counts/sequence_space)*1000000) %>%
-    ungroup() %>%
-    select(tfbs, M9_tfbs_counts, M9_tfbs_FPMbp) %>% 
-    distinct()
-
-LB_tfbs_overlap <- sqldf("SELECT a.*, b.*
-                    FROM promoter_max_LB AS a 
-                    JOIN tfbs_regulondb AS b
-                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
-                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
-    na.omit() %>% 
-    mutate(sequence_space = sum(peak_right-peak_left)) %>%
-    group_by(tfbs) %>%
-    mutate(LB_tfbs_counts = n(), 
-           LB_tfbs_FPMbp = (LB_tfbs_counts/sequence_space)*1000000) %>%
-    ungroup() %>%
-    select(tfbs, LB_tfbs_counts, LB_tfbs_FPMbp) %>% 
-    distinct()
-
-a <- full_join(M9_tfbs_overlap, LB_tfbs_overlap, by = 'tfbs') %>% 
-    replace(., is.na(.),0) %>%
-    ggplot(aes(x = LB_tfbs_FPMbp, y = M9_tfbs_FPMbp)) + 
-    geom_point() + 
-    scale_x_log10() + scale_y_log10() + 
-    geom_abline(slope = 1, linetype = 'dashed', color = 'red') +
-    labs(x='TFBS Frequency in LB', 
-         y = 'TFBS Frequency in M9', 
-         title = 'TFBS frequency at all promoters')
-
-```
-
-
-# How many promoters are annotated for each group?
-```{}
-annotated_M9 <- sqldf("SELECT a.*, b.*
-                    FROM M9_only_peaks AS a 
-                    JOIN tfbs_regulondb AS b
-                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
-                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
-    na.omit() %>% 
-    mutate(sequence_space = sum(peak_right-peak_left)) %>%
-    group_by(tfbs) %>%
-    mutate(M9_tfbs_counts = n(), 
-           M9_tfbs_FPMbp = (M9_tfbs_counts/sequence_space)*100000) %>%
-    ungroup() %>% 
-    select(peak_name) %>% 
-    distinct() %>% 
-    nrow()
-
-
-annotated_LB <- sqldf("SELECT a.*, b.*
-                    FROM LB_only_peaks AS a 
-                    JOIN tfbs_regulondb AS b
-                    ON b.tfbs_left BETWEEN a.peak_left AND a.peak_right
-                    OR b.tfbs_right BETWEEN a.peak_left AND a.peak_right") %>%
-    na.omit() %>% 
-    mutate(sequence_space = sum(peak_right-peak_left)) %>%
-    group_by(tfbs) %>% 
-    mutate(LB_tfbs_counts = n(), 
-           LB_tfbs_FPMbp= (LB_tfbs_counts/sequence_space)*100000) %>%
-    ungroup() %>% 
-    select(peak_name) %>% 
-    distinct() %>% 
-    nrow()
-
-```
-
-```{}
-#Sites overlapping M9
-bedtools intersect -a ../../processed_data/frag/M9_on_promoters.bed -b ../../processed_data/endo_scramble/tf_sites.bed > ../../processed_data/frag/M9_TFBS_overlaps.bed
-
-#Sites overlapping LB
-bedtools intersect -a ../../processed_data/frag/LB_on_promoters.bed -b ../../processed_data/endo_scramble/tf_sites.bed > ../../processed_data/frag/LB_TFBS_overlaps.bed
 
 ```
 
@@ -651,21 +530,6 @@ gene_coverage <-  read.table("../../processed_data/RNAseq_M9/gene_coverage_M9.be
 promVcoverage <- full_join(sense_exp, antisense_exp, by = 'gene') %>%
     left_join(., gene_coverage, by = 'gene') %>%
     replace(., is.na(.), 0)
-
-
-# # What are the distributions of expression levels
-# 
-# a <- ggplot(promVcoverage, aes(sense_exp)) +
-#     geom_histogram(fill = 'navyblue', bins = 50) + 
-#     scale_x_log10() + 
-#     annotation_logticks(sides = 'bl') + 
-#     scale_y_log10()
-# 
-# b <- ggplot(promVcoverage, aes(antisense_exp)) + 
-#     geom_histogram(fill = 'firebrick1', bins = 50) + 
-#     scale_x_log10() + scale_y_log10() + annotation_logticks(sides = 'bl')
-# 
-# plot_grid(a, b, ncol = 1)
 
 sense_quant <- c(quantile(promVcoverage$sense_exp))[2:5]
 antisense_quant <- c(quantile(promVcoverage$antisense_exp))[3:5]
