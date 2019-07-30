@@ -24,6 +24,7 @@ data <- data %>%
     mutate(site_type_ttest_signif = ifelse(significant == T, site_type_ttest, NA)) %>% 
     mutate(site_type_signif = case_when(.$site_type_ttest_signif == 'increased' ~ 'repressing',
                                  .$site_type_ttest_signif == 'reduced' ~ 'activating'))
+
 data %>% 
     filter(!is.na(site_type_signif)) %>% 
     ggplot(aes(unscrambled_exp, relative_exp)) + 
@@ -41,6 +42,7 @@ data %>%
           axis.title = element_text(size = 20),
           legend.text = element_text(size = 20),
           legend.title = element_text(size = 20))
+
 ggsave('../../figs/fig5/fig5a_scramble_ttest.pdf', unit = 'in', 
        height = 5, width = 7)
 ```
@@ -60,7 +62,14 @@ rbind(upreg, downreg) %>%
     scale_fill_manual(values = c("#FDE725FF","#482878FF")) +
     labs(x="Scramble Position",
          y = "Density", 
-         title = "Distribution of Sequences that Modulate Expression")
+         title = "Distribution of Sequences that Modulate Expression") +
+     theme(axis.text = element_text(size = 20),
+           axis.title = element_text(size = 20),
+           legend.text = element_text(size = 20),
+           legend.title = element_text(size = 20))
+
+ggsave('../../figs/fig5/fig5b_scramble_dist.pdf', unit = 'in', 
+       height = 5, width = 10)
 ```
 
 ```{r}
