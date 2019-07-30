@@ -172,11 +172,5 @@ labels <- unique_df %>%
     summarize(percent = round(sum(num_sources)/nrow(unique_df) * 100, 2))
 labels$lab <- as.character(labels$percent)
 
-ggplot(unique_df, aes(num_sources)) + 
-    geom_bar(aes(y = (..count..)/sum(..count..) * 100), fill='navyblue') +
-    geom_text(data = labels ,aes(x = num_sources, y = percent, label = lab), 
-              vjust = 0, size = 6) +
-    labs(x='Number of sources', 
-         y='percent of TSSs',
-         title='Overlap in TSSs reported from\ntwo genome-wide studies and RegulonDB')
+
 

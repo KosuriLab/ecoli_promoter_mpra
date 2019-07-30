@@ -151,14 +151,6 @@ ggsave('../../figs/supp_figs/figS4_frag_size_distribution.pdf', units = 'in',
 ```
 
 
-We averaged the expression of all fragments overlapping each genomic position to achieve highly replicable values of promoter activity at single-nucleotide resolution and in a strand-specific manner (Supplementary Figure 5)
-
-```{r}
-
-
-```
-
-
 Our assay of genomic fragments identified regions of promoter activity that were fairly broad (Figure S6) and well above the expected size of regulated promoters
 ```{r}
 peak_lengths <- read.table('../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed',
@@ -219,7 +211,8 @@ activator_color <- '#FFD700'
 
 read.table("../../processed_data/endo_scramble/scramble_merged_sites.txt", header = T) %>% 
     mutate(site_type_new = case_when(.$site_type == 'increased' ~ 'activating',
-                                 .$site_type == 'reduced' ~ 'repressing')) %>% 
+                                 .$site_type == 'reduced' ~ 'repressing'),
+           site_length = scramble_end_pos - scramble_start_pos) %>% 
     ggplot(., aes(site_length)) +
     geom_histogram(color = 'black', aes(fill = site_type_new)) +
     scale_fill_manual(values = c(repressor_color, activator_color)) +
@@ -238,6 +231,18 @@ ggsave('../../figs/supp_figs/figSX_merged_scramble_length_distribution.pdf',
        units = 'in', width  = 10, height = 5)
 ```
 
+
+Activity of randomly generated sequences
+
+```{r}
+peak_tile <- read.table('../../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
+                        header = T)
+
+ggplot(peak_tile, aes(category, expn_med_fitted_scaled)) + 
+    geom_boxplot(aes(fill = category)) +
+    scale_y_log10() +
+    labs(x = '', color = '', y = 'Expression')
+```
 
 
 
