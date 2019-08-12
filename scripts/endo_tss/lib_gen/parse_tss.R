@@ -24,6 +24,7 @@ tss1 <- data.frame(tss_map$Pos, tss_map$Condition, tss_map$Strand,
 colnames(tss1) <- c('position', 'condition', 'strand', 'type')
 # add column for source information
 tss1 <- cbind(tss1, source=rep('storz', nrow(tss1)))
+distinct(tss1, position, strand) %>% nrow()
 
 # read in other tss file
 tss2 <- read.table('tss_only_wanner.txt', header=F, sep='\t')
@@ -32,6 +33,7 @@ colnames(tss2) <- c('position', 'strand', 'type')
 tss2 <- cbind(tss2, condition=rep(NA, nrow(tss2)))
 # add source information
 tss2 <- cbind(tss2, source=rep('wanner', nrow(tss2)))
+distinct(tss2, position, strand) %>% nrow()
 
 # read in regulondb promoters
 regulondb <- read.table('regulondb_promoters.txt', comment.char='#', 
@@ -62,9 +64,12 @@ tss_in_all_three <- final_tss %>%
     group_by(position) %>% 
     summarise(num_sources = n()) %>% 
     filter(num_sources == 3)
+nrow(tss_in_all_three)
 
 # grab list of unique TSS and strand information
 tss_only <- select(final_tss, position, strand) %>% distinct()
+nrow(tss_only)
+
 
 # for each unique TSS, create new column with list of all sources
 final_tss <- final_tss %>%
@@ -76,6 +81,8 @@ final_tss <- final_tss %>%
 final_tss_unique <- final_tss %>%
     select(position, strand, -source, source=sources) %>%
     distinct()
+
+table(final_tss_unique$source)
 
 # Takes a list of TSSs and builds up a list of TSSs, starting from smallest, so that no TSSs are within
 # n bp of each other

@@ -24,7 +24,7 @@ Figure 1C - Technical replicates
 
 ```{r}
 neg <- subset(Endo2, grepl("neg_control", Endo2$name))
-threshold <- 1
+
 cor <- cor(Endo2$RNA_exp_1, Endo2$RNA_exp_2)
 
 ggplot(Endo2, aes(RNA_exp_1, RNA_exp_2)) + 
@@ -74,6 +74,39 @@ ggplot(Endo2, aes(expn_med_fitted_scaled)) +
 ggsave('../../figs/fig1/tss_lib_expression_dist.pdf', units = 'in', width = 7.29, height = 4.51)
 ```
 
+Figure 1E alternate - Number of active promoters per source
+```{r, eval = F}
+# Storz <- Endo2[grepl('storz', Endo2$name),] 
+# Wanner <- Endo2[grepl('wanner', Endo2$name),] 
+# regulondb <-Endo2[grepl('regulondb', Endo2$name),]
+# 
+# data.frame(Expression = c("Active TSS", "Inactive TSS"),
+#                          Value = c(nrow(filter(Wanner, expn_med_fitted_scaled > threshold)),
+#                                    nrow(filter(Wanner, expn_med_fitted_scaled < threshold))),
+#                          source = "Wanner") %>%
+#     rbind(., data.frame(Expression = c("Active TSS", "Inactive TSS"),
+#                          Value = c(nrow(filter(Storz, expn_med_fitted_scaled > threshold)),
+#                                    nrow(filter(Storz, expn_med_fitted_scaled < threshold))),
+#                          source = "Storz")) %>%
+#     rbind(., data.frame(Expression = c("Active TSS", "Inactive TSS"),
+#                          Value = c(nrow(filter(regulondb, expn_med_fitted_scaled > threshold)),
+#                                    nrow(filter(regulondb, expn_med_fitted_scaled < threshold))),
+#                          source = "RegulonDB")) %>%
+#     ggplot(aes(x = source, y = Value, fill = Expression)) + 
+#         geom_bar(stat = "identity", position = position_dodge(width = 0), color = 'black') +
+#         scale_fill_manual(values = c("#2E6EB7", "#F6BA60")) +
+#         scale_x_discrete(expand = c(0, 2)) +
+#         theme(legend.position = c(0,1),
+#               axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
+#               axis.title.x = element_text(size = 20),
+#               axis.text.y = element_text(size = 20), 
+#               axis.title.y = element_text(size = 20), 
+#               legend.text = element_text(size = 20)) +
+#         labs(x = "Source", y = "Count")
+# 
+# ggsave('../../figs/fig1/activity_by_source.pdf', units = 'in', height = 8.1, width = 7.46)
+```
+
 Figure 1E, general proportion of active/inactive, not broken down by source.
 
 ```{r}
@@ -102,6 +135,7 @@ Figure 1F - inactive promoters are enriched for -10 sequences but not -35s
 
 ```{r}
 # join sequences to expression data
+threshold <- 1
 Endo2_stats <- Endo2 %>%
             mutate("classification" = ifelse(expn_med_fitted_scaled > threshold,
                                              "Active", "Inactive"))
@@ -154,7 +188,7 @@ Endo2_stats$minus10_max_entry <- NULL
 ```
 
 
-Figure 1F cont. - Minus 35 Scoring
+Figure 1E cont. - Minus 35 Scoring
 
 ```{r warning=FALSE}
 #This code uses the pwms from bTSSFinder (which come from literature) to find the best -35 site
@@ -194,29 +228,25 @@ Endo2_stats$minus35_max_entry <- NULL
 
 
 ```{r}
-a <- Endo2_stats %>% 
-    select(-tss_position, -strand) %>% 
-    na.omit() %>%
-    mutate(minus35_start = -abs(150 - minus35_start) + 30) %>%
-    mutate(minus10_start = -abs(150 - minus10_start) + 30) %>%
-    select(minus10_max_score, minus35_max_score, classification) %>%
-    filter(minus10_max_score > 0 & minus35_max_score >0) %>%
-    ggplot(aes(x = classification, y = minus10_max_score)) +
-    stat_boxplot(geom = 'errorbar', width = 0.25) +
-    geom_boxplot(aes(fill = classification), width = 0.5) +
-    scale_fill_manual(values = c("#2E6EB7", "#F6BA60", "grey")) +
-    scale_x_discrete(expand = c(0, 2)) + 
-    geom_signif(comparisons = list(c("Active", "Inactive"), 
-                                   c("Active", "Negative \n Controls"), 
-                                   c("Inactive", "Negative \n Controls")), 
-                y_position = c(4.325, 4.4, 4.25), map_signif_level=TRUE) +
-    labs(x="TSS Classification", y= "Minus10 Motif Score") +
-    theme(legend.position = 'none',
-                  axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
-                  axis.title.x = element_text(size = 20),
-                  axis.text.y = element_text(size = 20), 
-                  axis.title.y = element_text(size = 20), 
-                  legend.text = element_text(size = 20)) 
+a <- Endo2_stats %>% select(-tss_position, -strand) %>% na.omit() %>%
+             mutate(minus35_start = -abs(150 - minus35_start)+30) %>%
+             mutate(minus10_start = -abs(150 - minus10_start)+30) %>%
+             select(minus10_max_score, minus35_max_score, classification) %>%
+             filter(minus10_max_score > 0 & minus35_max_score >0) %>%
+             ggplot(aes(x=classification, y = minus10_max_score)) +
+             stat_boxplot(geom ='errorbar', width = 0.25) +
+             geom_boxplot(aes(fill = classification), width = 0.5) +
+             scale_fill_manual(values = c("#2E6EB7", "#F6BA60", "grey")) +
+             scale_x_discrete(expand = c(0, 2)) + 
+             geom_signif(comparisons = list(c("Active", "Inactive"), 
+                                            c("Active", "Negative \n Controls"), 
+                                            c("Inactive", "Negative \n Controls")), 
+                        y_position = c(4.325, 4.4, 4.25), 
+                        map_signif_level=TRUE, #Comment out for p-values
+                        test = "wilcox.test") +
+            labs(x="TSS Classification", y= "Minus10 Motif Score") +
+            theme(axis.text.x = element_text(size = 15, angle = 45, hjust = 1),
+        legend.position="none")
 
 b <- Endo2_stats %>% select(-tss_position, -strand) %>% na.omit() %>%
              mutate(minus35_start = -abs(150 - minus35_start)+30) %>%
@@ -232,17 +262,16 @@ b <- Endo2_stats %>% select(-tss_position, -strand) %>% na.omit() %>%
              geom_signif(comparisons = list(c("Active", "Inactive"), 
                                             c("Active", "Negative \n Controls"), 
                                             c("Inactive", "Negative \n Controls")), 
-                         y_position = c(3.625, 3.7, 3.55), 
-              map_signif_level = TRUE) + 
-            theme(legend.position = 'none',
-                  axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
-                  axis.title.x = element_text(size = 20),
-                  axis.text.y = element_text(size = 20), 
-                  axis.title.y = element_text(size = 20), 
-                  legend.text = element_text(size = 20)) 
+                         y_position = c(3.625, 3.7, 3.55),
+                         map_signif_level=TRUE, #Comment out for p-values
+                         test = "wilcox.test") + 
+            theme(axis.text.x = element_text(size = 15, angle = 45, hjust = 1),
+                  legend.position = "none")
 
 plot_grid(a,b, labels = c('A', 'B'))
 ggsave('../../figs/fig1/tss_promoter_scores.pdf', units = 'in', width = 9.06, height = 6.32)
 
 ```
+
+
 
