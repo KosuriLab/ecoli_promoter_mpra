@@ -1,4 +1,5 @@
 import argparse
+import numpy as np
 from wiggelen import walk, fill
 
 
@@ -17,6 +18,16 @@ def division(x, y):
 		return float(x) / float(y)
 
 
+def read_wig(filename, norm=False):
+	wig_dict = {position : value for region, position, value in fill(walk(open(filename)))}
+	if norm:
+		print "Normalizing..."
+		wig_median = float(np.median(wig_dict.values()))
+		wig_norm = {x : wig_dict[x]/wig_median for x in wig_dict}
+		return wig_norm
+	else:
+		return wig_dict
+
 if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
@@ -32,11 +43,13 @@ if __name__ == '__main__':
 	file1 = args.file1
 	file2 = args.file2
 	operation = args.operation
+	norm = args.median_norm
 
 	print "Reading file 1..."
-	wig1_dict = {position : value for region, position, value in fill(walk(open(file1)))}
+	wig1_dict = read_wig(file1, norm)
 	print "Reading file 2.."
-	wig2_dict = {position : value for region, position, value in fill(walk(open(file2)))}
+	wig2_dict = read_wig(file2, norm)
+
 
 	min_position = min(min(wig1_dict.keys()), min(wig2_dict.keys()))
 	max_position = max(max(wig1_dict.keys()), max(wig2_dict.keys()))
@@ -50,6 +63,7 @@ if __name__ == '__main__':
 		output_dict = {i : division(wig1_dict.get(i, 0), wig2_dict.get(i, 0)) for i in range(min_position, max_position+1)}
 	else:
 		raise ValueError('invalid operation')
+
 
 	outfile = open(args.output, 'w')
 	outfile.write("variableStep chrom=U00096.2\n")
