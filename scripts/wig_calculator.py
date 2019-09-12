@@ -25,6 +25,7 @@ if __name__ == '__main__':
 	parser.add_argument('operation', help='''Mathematical operation. add, subtract
 		or divide''')
 	parser.add_argument('output', help='Name of output file')
+	parser.add_argument('--median_norm', action='store_true')
 
 	args = parser.parse_args()
 

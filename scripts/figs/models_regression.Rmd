@@ -241,17 +241,44 @@ accuracy$method <- factor(accuracy$method,
 ```
 
 ```{r}
-gg1 <- ggplot(accuracy, aes(method, rmse)) + geom_bar(stat = 'identity') +
-    labs(x = '', y = 'RMSE') + coord_flip() 
-gg2 <- ggplot(accuracy, aes(method, r.squared)) + geom_bar(stat = 'identity') +
+
+gg1 <- ggplot(accuracy, aes(method, rmse)) + 
+    geom_bar(stat = 'identity') +
+    labs(x = '', y = 'RMSE') + coord_flip() +
+gg2 <- ggplot(accuracy, aes(method, r.squared)) +
+    geom_bar(stat = 'identity') +
     labs(x = '', y = 'R-squared') + coord_flip() +
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1))
 
 plot_grid(gg1, gg2, nrow = 2)
+ggsave('../../figs/model_comparison_regression.pdf')
 ```
 
 
 ```{r}
-ggsave('../../figs/model_comparison_regression.pdf')
+colors <- c('red', 'darkred', 'aquamarine', 'black', 'blue', 'darkgreen',
+            'lightblue', 'purple', 'gold')
+gg1 <- ggplot(accuracy, aes(method, rmse)) + 
+    geom_bar(stat = 'identity', aes(fill = method)) +
+    scale_fill_manual(values = colors) +
+    labs(x = '', y = 'RMSE') + coord_flip() +
+    theme(legend.position = 'none', 
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          text = element_text(size = 20))
+gg2 <- ggplot(accuracy, aes(method, r.squared)) +
+    geom_bar(stat = 'identity', aes(fill = method)) +
+    scale_fill_manual(values = colors) +
+    labs(x = '', y = 'R-squared') + coord_flip() +
+    theme(legend.position = 'none', 
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          text = element_text(size = 20))
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1))
+
+plot_grid(gg1, gg2, nrow = 2)
+ggsave('../../figs/model_comparison_regression_color.pdf',
+       units = 'in', width = 8, height = 5)
 ```
+
 
