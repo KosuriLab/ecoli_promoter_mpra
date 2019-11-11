@@ -9,6 +9,8 @@ options(stringsAsFactors = F)
 
 library(dplyr)
 library(tidyr)
+library(ggplot2)
+library(cowplot)
 
 
 tss <- read.table('../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted.txt', 
@@ -25,6 +27,9 @@ flp3 <- read.table('../processed_data/endo_tss/alt_landing_pads/fLP3/fLP3_Endo2_
 
 rlp6 <- read.table('../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_Endo2_lb_expression_formatted.txt',
                    header = T)
+
+# format scramble negative control category correctly
+scramble$category[grep("_scrambled", scramble$name)] <- "scramble"
 
 # wt_scramble <- scramble %>% 
 #     filter(category == 'unscrambled') %>% 
@@ -68,20 +73,22 @@ set_std_threshold <- function(df) {
     neg <- filter(df, category == 'neg_control')
     neg_sd <- sd(neg$expn_med_fitted)
     neg_median <- median(neg$expn_med_fitted)
-    threshold <- neg_median + (2 * neg_sd)
-    scale = 1 / threshold
-    print(c(threshold, scale))
-    return(df$expn_med_fitted * scale)
+    # threshold <- neg_median + (2 * neg_sd)
+    # scale = 1 / threshold
+    # print(c(threshold, scale))
+    # return(df$expn_med_fitted * scale)
+    return(df$expn_med_fitted - neg_median)
 }
 
 set_std_threshold_peak <- function(df) {
     neg <- filter(df, category == 'neg_control')
     neg_mad <- mad(neg$expn_med_fitted)
     neg_median <- median(neg$expn_med_fitted)
-    threshold <- neg_median + (3 * neg_mad)
-    scale = 1 / threshold
-    print(c(threshold, scale))
-    return(df$expn_med_fitted * scale)
+    # threshold <- neg_median + (3 * neg_mad)
+    # scale = 1 / threshold
+    # print(c(threshold, scale))
+    # return(df$expn_med_fitted * scale)
+    return(df$expn_med_fitted - neg_median)
 }
 
 tss$expn_med_fitted_scaled <- set_std_threshold(tss)
@@ -132,3 +139,39 @@ write.table(combined, '../processed_data/combined/tss_scramble_peak_expression_m
 write.table(select(combined, variant, expn_med_fitted_scaled), 
             '../processed_data/combined/tss_scramble_peak_expression_model_format_values_only.txt',
             row.names = F, col.names = F, quote = F, sep = '\t')
+
+
+# graph positive controls in scramble and TSS
+pos_controls <- inner_join(filter(tss, category == 'pos_control') %>% 
+                               select(name, expn_med1 = expn_med_fitted_scaled),
+                           filter(scramble, category == 'pos_control') %>% 
+                               select(name, expn_med2 = expn_med_fitted_scaled),
+                           by = 'name')
+
+controls <- inner_join(filter(tss, grepl("control", category)) %>% 
+                           select(name, category, expn_med1 = expn_med_fitted),
+                           filter(scramble, grepl("control", category)) %>% 
+                               select(name, category, expn_med2 = expn_med_fitted),
+                           by = 'name')
+
+ggplot(controls, aes(expn_med1, expn_med2)) + 
+    geom_point(aes(color = category.x)) +
+    scale_x_log10() + scale_y_log10()
+
+# graph unscrambled
+wildtype <- inner_join(filter(tss, category == 'tss') %>% 
+                           select(name, tss_name, expn_med1 = expn_med),
+                       filter(scramble, category == 'unscrambled') %>% 
+                           select(name, tss_name, expn_med2 = expn_med),
+                       by = 'tss_name')
+
+
+r2 <- summary(lm(expn_med1 ~ expn_med2, wildtype))$r.squared
+ggplot(wildtype, aes(expn_med1, expn_med2)) + 
+    geom_point() + 
+    annotation_logticks(sides='bl') + scale_x_log10() + scale_y_log10() +
+    geom_smooth(method = 'lm') +
+    labs(x = 'TSS expression', y = 'scramble expression',
+         title = 'Wild-type sequences') +
+    annotate('text', x=50, y=0.1, parse=T, label=paste('R^2==', signif(r2, 3)))
+

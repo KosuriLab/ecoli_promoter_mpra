@@ -44,7 +44,7 @@ tfbs_regulondb <- read.table("../../ref/regulondb_tfbs_U00096.2.txt",
 #How many active TSSs in promoter regions?
 ```{bash}
 
-bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/active_TSS_all.bed -wb | wc -l
+bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/active_TSS.bed -wb | wc -l
 
 #bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/active_TSS_plus.bed -wo > ../../processed_data/endo_tss/lb/active_TSS_promoter_overlap_plus.bed
 
@@ -55,7 +55,7 @@ bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called
 How many inactive TSSs in promoter regions?
 ```{bash}
 
-bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/inactive_TSS_all.bed -wb | wc -l
+bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/inactive_TSS.bed -wb | wc -l
 
 ```
 How many negative controls in promoter regions?

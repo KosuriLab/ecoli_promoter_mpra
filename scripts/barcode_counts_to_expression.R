@@ -6,7 +6,7 @@ library(Biostrings)
 options(stringsAsFactors = F)
 options(scipen = 10000)
 
-args = commandArgs(trailingOnly=TRUE)
+# args = commandArgs(trailingOnly=TRUE)
 
 # args <- c('../../processed_data/endo_tss/lb',
 #           '../../processed_data/endo_tss/lb/endo_lb_bc_map.txt',
@@ -14,11 +14,11 @@ args = commandArgs(trailingOnly=TRUE)
 #           '../../ref/endo_lib_2016_controls_clean.txt',
 #           '../../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression.txt')
 
-# args <- c('../../processed_data/endo_scramble',
-#           '../../processed_data/endo_scramble/endo_scramble_combined_bc_map.txt',
-#           '../../processed_data/endo_scramble/endo_scramble_combined_controls_bc_map.txt',
-#           '../../ref/20180507_active_tss_scrambled10_stride5.txt',
-#           '../../processed_data/endo_scramble/endo_scramble_expression.txt')
+args <- c('../../processed_data/endo_scramble',
+          '../../processed_data/endo_scramble/endo_scramble_combined_bc_map.txt',
+          '../../processed_data/endo_scramble/endo_scramble_combined_controls_bc_map.txt',
+          '../../ref/20180507_active_tss_scrambled10_stride5.txt',
+          '../../processed_data/endo_scramble/endo_scramble_expression.txt')
 count_folder <- args[1]
 bc_map_file <- args[2]
 bc_map_file_controls <- args[3]

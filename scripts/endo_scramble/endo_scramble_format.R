@@ -42,5 +42,6 @@ data$category <- "scramble"
 data$category[grep("pos_control", data$name)] <- "pos_control"
 data$category[grep("neg_control", data$name)] <- "neg_control"
 data$category[grep("unscrambled", data$name)] <- "unscrambled"
+data$category[grep("scrambled", data$name)] <- "scramble"
 
 write.table(data, file = outfile, quote = F, row.names = F)

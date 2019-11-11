@@ -228,7 +228,7 @@ def make_rna_line(start, end, conditions):
     return src_rna
 
 
-def make_region_plot(src, src_gene, src_tss, src_rna):
+def make_region_plot(src, src_gene, src_tss, src_rna, fixed_yaxis=None):
     '''
     Construct pileup plot based on src
     '''
@@ -243,9 +243,16 @@ def make_region_plot(src, src_gene, src_tss, src_rna):
         rna_count_range = 0
 
     count_range = max(frag_count_range, rna_count_range)
+
+    if fixed_yaxis:
+        ymin = -1 * (fixed_yaxis)
+        ymax = fixed_yaxis
+    else:
+        ymin = -(count_range+1)
+        ymax = count_range + 1
     
     # draw blank figure of correct size with tools
-    p = figure(y_range=(-(count_range+1), count_range+1), plot_width=900, plot_height=700, 
+    p = figure(y_range=(ymin, ymax), plot_width=900, plot_height=700, 
                tools=[BoxSelectTool(), BoxZoomTool(), PanTool(), WheelZoomTool(), 
                       SaveTool(), ResetTool()],
                toolbar_location='above')
@@ -389,6 +396,16 @@ def update_axis():
     max_tss = max(map(abs, src_tss.data['y0']))
     p.extra_y_ranges['tss'].start = max_tss * -4
     p.extra_y_ranges['tss'].end = max_tss * 4
+
+
+# def set_axis(attr, old, new):
+
+#     p.y_range.start = int(set_axis.value)
+#     p.y_range.end = -(int(set_axis.value))
+
+#     # update second y-axis
+#     p.extra_y_ranges['tss'].start = value * 4
+#     p.extra_y_ranges['tss'].end = value * -4
 
 
 def add_bp(n=500):
@@ -536,6 +553,7 @@ rna_button = Select(
     value='show')
 rna_button.on_change('value', toggle_rna)
 
+
 # add 500bp to both sides
 add_button = Button(label='Add 500bp to both ends', button_type='primary')
 add_button.on_click(add_bp)
@@ -547,6 +565,10 @@ axis_button.on_click(update_axis)
 # search by gene name
 gene_search = TextInput(value='Enter your favorite gene!', title='Search by gene name (case sensitive)')
 gene_search.on_change('value', update_gene)
+
+# # set y-axis limit
+# set_axis_button = TextInput(title='Set left y-axis limits', value='2')
+# set_axis_button.on_change('value', set_axis)
 
 # export to SVG
 export_button = Button(label='Export plot to SVG', button_type='primary')
@@ -570,7 +592,7 @@ src_gene = make_region_genes(genes, initial_start, initial_end)
 src_tss = make_tss_arrow(endo_tss_lb, initial_start, initial_end)
 src_rna = make_rna_line(initial_start, initial_end, initial_conditions)
 
-p = make_region_plot(src, src_gene, src_tss, src_rna)
+p = make_region_plot(src, src_gene, src_tss, src_rna, fixed_yaxis=3)
 
 
 
@@ -619,8 +641,10 @@ tss_text = Div(text='''
 # create row layout
 # layout = gridplot([controls_row1, p, WidgetBox(tss_text, tss_button), WidgetBox(gene_button, start, end)], ncols=2)
 
-controls_group1 = WidgetBox(general_text, norm_text, frag_text, condition_selection, rna_text, rna_button, axis_button)
-controls_group2 = WidgetBox(gene_button, start, end, add_button, gene_search, export_button)
+controls_group1 = WidgetBox(general_text, norm_text, frag_text, condition_selection, 
+    rna_text, rna_button, tss_button)
+controls_group2 = WidgetBox(gene_button, start, end, add_button, gene_search, 
+     axis_button, export_button)
 layout = row(controls_group1, p, controls_group2)
 
 # make tab with layout

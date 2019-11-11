@@ -60,6 +60,8 @@ PrrsE <- Endo2$expn_med_fitted_scaled[Endo2$name %in% rrsE]
 mid_PrrsE <- mean(PrrsE)
 rm(rrsE)
 
+threshold <- 1
+
 ggplot(Endo2, aes(expn_med_fitted_scaled)) +
       geom_histogram(color = 'black', fill = 'black', alpha = .2, bins = 100) +
       geom_histogram(data=neg, aes(expn_med_fitted_scaled), color = 'red', fill = 'red', alpha = .2, bins = 100) +
