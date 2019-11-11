@@ -1,0 +1,814 @@
+---
+title: "Figure3_v2"
+author: "Guillaume Urtecho"
+date: "8/28/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+setwd('~/../Google Drive/Kosuri_Lab/ecoli_promoter_mpra (1)/scripts/figs')
+knitr::opts_knit$set(root.dir = '~/../Google Drive/Kosuri_Lab/ecoli_promoter_mpra (1)/scripts/figs')
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+require(cowplot)
+library(sqldf)
+library(reshape2)
+library(Biostrings)
+library(tidyverse)
+library(scales)
+library(matrixStats)
+
+options(stringsAsFactors = F)
+options(scipen = 10000)
+
+data_all <- read.table('../../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
+                       header = T)
+
+negatives <- filter(data_all, category == 'neg_control')
+
+peak_data <- data_all %>% 
+    filter(category == 'tile')
+
+```
+
+
+
+Identify intragenic minimal promoters and create control intragenic regions
+
+
+```{bash}
+
+#How many intergenic promoters?
+bedtools intersect  -b ../../ref/U00096.2_genes_clean.bed -a ../../processed_data/peak_tile/minimal_promoters.bed -f .5 -wo -v > ../../processed_data/peak_tile/intergenic_promoter_gene_overlap.bed
+
+#How many intragenic promoters?
+bedtools intersect  -b ../../ref/U00096.2_genes_clean.bed -a ../../processed_data/peak_tile/minimal_promoters.bed -f .5 -wo > ../../processed_data/peak_tile/intragenic_promoter_gene_overlap.bed
+
+```
+
+
+Annotate regulatory modes
+```{r}
+#Get intragenic promoter-gene matches and annotate 
+
+intragenic_overlap <- read.table("../../processed_data/peak_tile/intragenic_promoter_gene_overlap.bed") %>% 
+    select(peak_name = V4, peak_left = V2, peak_right = V3, median_activity = V5, peak_strand = V6,
+           gene = V10, gene_left = V8, gene_right = V9, gene_strand = V12) %>%
+    na.omit() %>%
+    mutate(Orientation = ifelse(gene_strand==peak_strand, "Sense", "Antisense"), 
+           type =  'Intragenic',
+           gene = gsub('NC_000913.2:', '', .$gene)) %>% 
+    ungroup() 
+
+#Get intergenic promoter-gene matches and annotate 
+intergenic_promoters <- read.table("../../processed_data/peak_tile/intergenic_promoter_gene_overlap.bed") %>%
+      select(peak_name = V4, peak_left = V2, peak_right = V3, median_activity = V5, peak_strand = V6) %>%
+      mutate(downstream = ifelse(peak_strand == '+', peak_right + 500, peak_left-500))
+
+gene_coords <- read.table("../../ref/U00096.2_genes_clean.bed") %>% 
+    select(gene = V4, gene_left = V2, gene_right = V3, gene_strand = V6) %>%
+    mutate(gene = gsub('NC_000913.2:', '', .$gene))
+
+intergenic_overlap <- sqldf("SELECT a.*, b.*
+                    FROM intergenic_promoters AS a 
+                    JOIN gene_coords AS b
+                    ON b.gene_left BETWEEN a.peak_left AND a.downstream
+                    OR b.gene_left BETWEEN a.peak_right AND a.downstream
+                    OR b.gene_right BETWEEN a.downstream AND a.peak_left
+                    OR b.gene_right BETWEEN a.downstream AND a.peak_right") %>%
+    na.omit() %>%
+    group_by(peak_name) %>% 
+    filter(if (peak_strand == '+') gene_left == min(gene_left) 
+           else gene_right == max(gene_right)) %>% 
+    mutate(Orientation = ifelse(gene_strand==peak_strand, "Sense", "Antisense"), 
+           type =  'Intergenic') %>% 
+    ungroup()
+
+
+#What promoters have different regulatory roles? i.e. no gene within 500 bp downstream
+
+read.table("../../processed_data/peak_tile/minimal_promoters.bed",
+            col.names = c('genome', 'prom_left', 'prom_right', 'peak_name', 'prom_score', 'prom_strand')) %>% 
+    anti_join(., intragenic_overlap, by = 'peak_name') %>%
+    anti_join(., intergenic_overlap, by = 'peak_name')
+
+
+```      
+
+
+2F Figure
+```{r}
+bind_rows(intergenic_overlap, intragenic_overlap) %>%
+    select(type, Orientation) %>% 
+    group_by(type, Orientation) %>% na.omit() %>%
+    mutate(count = n()) %>%  ungroup() %>% distinct() %>%
+    ggplot(aes(x=type, y=count, fill = Orientation)) + 
+    geom_bar(stat = 'identity', position = 'stack', color = 'black') +
+    scale_fill_manual(values = c("firebrick3", "#2E6EB7")) +
+    theme(axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
+          axis.title.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20), 
+          legend.text = element_text(size = 20),
+          legend.position = 'bottom') +
+    labs(x = "Promoter Type", y = "Count", 
+         fill = "Promoter orientation relative to gene", 
+         title = "Promoter Classification") +
+    guides(fill = guide_legend(title.position = 'bottom'))
+
+ggsave('../../figs/fig3 (1)/promoter_location_genome.pdf', units = 'in',
+       height = 6, width = 3)
+```
+
+3A alternative -
+```{r}
+intragenic_overlap %>% mutate(type = ifelse(peak_left  > gene_left & peak_right < gene_right, 'Fully Intragenic', 'Partially Intragenic')) %>%
+bind_rows(., intergenic_overlap) %>%
+    select(type, Orientation) %>% 
+    group_by(type, Orientation) %>% na.omit() %>%
+    mutate(count = n()) %>%  ungroup() %>% distinct() %>%
+    ggplot(aes(x=type, y=count, fill = Orientation)) + 
+    geom_bar(stat = 'identity', position = 'stack', color = 'black') +
+    scale_fill_manual(values = c("firebrick3", "#2E6EB7")) +
+    theme(axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
+          axis.title.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20), 
+          legend.text = element_text(size = 20),
+          legend.position = 'bottom') +
+    labs(x = "Promoter Type", y = "Count", 
+         fill = "Promoter orientation relative to gene", 
+         title = "Promoter Classification") +
+    guides(fill = guide_legend(title.position = 'bottom'))
+
+ggsave('../../figs/fig3 (1)/promoter_location_genome_withPartial.png', units = 'in',
+       height = 6, width = 3)
+
+
+```
+
+#Write out dataframes for metagene transcriptome analysis, need plus and minus dataframes
+```{r}
+
+#get sense reg genes
+sense_reg_genes <- intergenic_overlap %>% filter(peak_strand == gene_strand) %>%
+                      select(gene) %>%
+                      distinct()
+
+#get antisense genes
+temp <- intergenic_overlap %>%
+          filter(peak_strand != gene_strand) %>%
+          select(gene)
+
+antisense_reg_genes <- intragenic_overlap %>%
+                          filter(peak_strand != gene_strand) %>%
+                          select(gene) %>%
+                          rbind(., temp) %>%
+                          distinct()
+
+
+dual_reg_genes <- inner_join(antisense_reg_genes, sense_reg_genes, by = 'gene') %>% distinct()
+
+antisense_reg_genes <- anti_join(antisense_reg_genes, dual_reg_genes, by = 'gene')
+
+#write out bed for plus dual reg
+gene_coords %>% semi_join(dual_reg_genes, by = 'gene') %>%
+                  mutate(genome = 'U00096.2', x = '.') %>%
+                  select(genome, gene_left, gene_right, gene, x, gene_strand) %>%
+                  filter(gene_strand == '+') %>%
+            write.table("../../processed_data/frag/plus_dual_reg_genes.bed",
+              col.names = FALSE,
+              quote = F,
+              row.names = FALSE,
+              sep = '\t')
+
+#WRite out bed for minus dual reg
+gene_coords %>% semi_join(dual_reg_genes, by = 'gene') %>%
+                  mutate(genome = 'U00096.2', x = '.') %>%
+                  select(genome, gene_left, gene_right, gene, x, gene_strand) %>%
+                  filter(gene_strand == '-') %>%
+    write.table("../../processed_data/frag/minus_dual_reg_genes.bed",
+              col.names = FALSE,
+              quote = F,
+              row.names = FALSE,
+              sep = '\t')
+
+#Write out bed for plus sense reg
+gene_coords %>% semi_join(sense_reg_genes, by = 'gene') %>% 
+                  anti_join(dual_reg_genes, by = 'gene') %>%
+                  mutate(genome = 'U00096.2', x = '.') %>%
+                  select(genome, gene_left, gene_right, gene, x, gene_strand) %>%
+                  filter(gene_strand == '+') %>%
+            write.table("../../processed_data/frag/plus_sense_genes.bed",
+              col.names = FALSE,
+              quote = F,
+              row.names = FALSE,
+              sep = '\t')
+
+
+#Write out bed for minus sense reg
+gene_coords %>% semi_join(sense_reg_genes, by = 'gene') %>% 
+                    anti_join(dual_reg_genes, by = 'gene') %>%
+                    mutate(genome = 'U00096.2', x = '.') %>%
+                    select(genome, gene_left, gene_right, gene, x, gene_strand) %>%
+                    filter(gene_strand == '-') %>%
+    write.table("../../processed_data/frag/minus_sense_genes.bed",
+              col.names = FALSE,
+              quote = F,
+              row.names = FALSE,
+              sep = '\t')
+
+#Write out bed for plus antisense reg
+gene_coords %>% semi_join(antisense_reg_genes, by = 'gene') %>% 
+                  anti_join(dual_reg_genes, by = 'gene') %>%
+                  mutate(genome = 'U00096.2', x = '.') %>%
+                  select(genome, gene_left, gene_right, gene, x, gene_strand) %>%
+                  filter(gene_strand == '+') %>%
+            write.table("../../processed_data/frag/plus_antisense_genes.bed",
+              col.names = FALSE,
+              quote = F,
+              row.names = FALSE,
+              sep = '\t')
+
+#Write out bed for minus antisense reg
+gene_coords %>% semi_join(antisense_reg_genes, by = 'gene') %>% 
+        anti_join(dual_reg_genes, by = 'gene') %>%
+        mutate(genome = 'U00096.2', x = '.') %>%
+select(genome, gene_left, gene_right, gene, x, gene_strand) %>%
+    filter(gene_strand == '-') %>%
+    write.table("../../processed_data/frag/minus_antisense_genes.bed",
+              col.names = FALSE,
+              quote = F,
+              row.names = FALSE,
+              sep = '\t')
+```
+
+2F - Antisense effects across gene bodies
+```{r}
+positions <- seq(10,1450,10)
+
+#is.nan.data.frame <- function(x)
+#do.call(cbind, lapply(x, is.nan))
+
+plus_RNA_exp <- read.table("../../processed_data/RNAseq_LB/plus_transcriptome_counts.txt", 
+                           skip = 3, fill = TRUE, sep = '\t', header = F) %>%
+    select(V1:V145)
+
+plus_RNA_exp[is.na(plus_RNA_exp)] <- 0
+names(plus_RNA_exp) <- positions
+
+plus_sense_RNA <-plus_RNA_exp[c(1:528),]
+plus_anti_RNA <-plus_RNA_exp[c(529:656),]
+plus_dual_RNA <- plus_RNA_exp[c(657:706),]
+
+minus_RNA_exp <- read.csv("../../processed_data/RNAseq_LB/minus_transcriptome_counts.txt", 
+                          skip =3, sep = '\t', header = F) %>%
+    select(V1:145)
+
+minus_RNA_exp[is.na(minus_RNA_exp)] <- 0
+
+names(minus_RNA_exp) <- positions
+minus_sense_RNA <-minus_RNA_exp[c(1:372),]
+minus_anti_RNA <-minus_RNA_exp[c(373:490),]
+minus_dual_RNA <- minus_RNA_exp[c(491:517),]
+
+RNA_mean_sense <- rbind(plus_sense_RNA, minus_sense_RNA) %>%
+    as.matrix() %>% colMedians(na.rm = TRUE) %>%
+    rbind(positions, .) %>% t() %>% as.data.frame() %>% 
+    mutate(type = 'Sense Regulated')
+names(RNA_mean_sense) <- c('position', 'coverage', 'Type')
+
+RNA_mean_anti <- rbind(plus_anti_RNA, minus_anti_RNA) %>%
+    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% t() %>% as.data.frame() %>% 
+    mutate(type = 'Antisense Regulated')
+names(RNA_mean_anti) <- c('position', 'coverage', 'Type')
+
+RNA_mean_dual <- rbind(plus_dual_RNA, minus_dual_RNA) %>%
+    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+    rbind(positions, .) %>% t() %>% as.data.frame() %>% 
+    mutate(type = 'Dual Regulated')
+names(RNA_mean_dual) <- c('position', 'coverage', 'Type')
+
+
+a <- rbind(RNA_mean_sense, RNA_mean_anti, RNA_mean_dual) %>% 
+    ggplot(., aes(x = position, y = coverage)) +
+    geom_area(alpha = 0, size = 1.1, position = 'identity', aes(color = Type)) + 
+    geom_vline(xintercept = c(300,1150), linetype = 'dashed') +
+    scale_color_manual(breaks = c('Sense Regulated', 'Antisense Regulated', "Dual Regulated"),
+                       values = c('firebrick3','purple', '#2E6EB7')) +
+    labs(x ='Position Relative to Gene',
+         y = 'Median RNAseq Coverage',
+         title = 'RNAseq Coverage Across \n Antisense Regulated Genes' ) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20), 
+          legend.text = element_text(size = 20))
+```
+
+2F - cont. Get promoter score across gene body
+```{r}
+positions <- seq(10,1450,10)
+plus_prom_exp <- read.table("../../processed_data/frag/lb/plus_promoter_lb_counts.txt", skip = 3, fill = TRUE, sep = '\t', header = F) %>%
+    select(V1:V145) 
+
+names(plus_prom_exp) <- positions
+
+plus_sense_prom <-plus_prom_exp[c(1:528),]
+plus_anti_prom <-plus_prom_exp[c(529:656),]
+plus_dual_prom <- plus_prom_exp[c(657:706),]
+
+minus_prom_exp <- read.csv("../../processed_data/frag/lb/minus_promoter_lb_counts.txt", skip =3, sep = '\t', header = F) %>%
+    select(V1:V145) 
+
+names(minus_prom_exp) <- positions
+minus_sense_prom <-minus_prom_exp[c(1:372),]
+minus_anti_prom <-minus_prom_exp[c(373:490),]
+minus_dual_prom <- minus_prom_exp[c(491:517),]
+
+
+prom_mean_sense <- rbind(plus_sense_prom, minus_sense_prom) %>%
+                      as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+                      rbind(positions, .) %>% t() %>%
+                      as.data.frame() %>% mutate(type = 'Sense Regulated \n (N=900)')
+names(prom_mean_sense) <- c('position', 'coverage', 'Type')
+
+prom_mean_dual <- rbind(plus_dual_prom, minus_dual_prom) %>%
+                    as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+                    rbind(positions, .) %>% t() %>%
+                    as.data.frame() %>% mutate(type = 'Dual Regulated \n (N=77)')
+names(prom_mean_dual) <- c('position', 'coverage', 'Type')
+
+prom_mean_anti <- rbind(plus_anti_prom, minus_anti_prom) %>%
+                      as.matrix() %>% colMedians(na.rm = TRUE)  %>%
+                      rbind(positions, .) %>% t() %>%
+                      as.data.frame() %>% mutate(type = 'Antisense Regulated \n (N=246)')
+names(prom_mean_anti) <- c('position', 'coverage', 'Type')
+
+
+b <- rbind(prom_mean_sense, prom_mean_anti, prom_mean_dual) %>% ggplot(., aes(x=position, y=coverage)) +
+          geom_area(alpha = 0, size = 1.1, position = 'identity', aes(color = Type)) + 
+          geom_vline(xintercept = c(300,1150), linetype = 'dashed') +
+         scale_color_manual(breaks = c('Sense Regulated \n (N=900)', 'Antisense Regulated \n (N=246)', "Dual Regulated \n (N=77)"),
+                             values = c('firebrick3','purple', '#2E6EB7')) +
+          labs(x ='Position Relative to Gene',
+               y = 'Median Promoter Activity',
+               title = 'Promoter Activity Across \n Antisense Regulated Genes' ) +
+          theme(axis.text.x=element_blank(),
+             axis.ticks.x=element_blank(),
+             axis.title.x = element_text(size = 20),
+                axis.text.y = element_text(size = 20), 
+                axis.title.y = element_text(size = 20), 
+                legend.text=element_text(size=20))
+
+plot_grid(a,b, ncol =2)
+ggsave('../../figs/fig3 (1)/antisenseEffects_metagene.pdf', units = 'in',
+       height = 4, width = 15)
+
+```
+
+Looking at sense v antisense and expression
+```{r}
+library(wesanderson)
+pal <- wes_palette('Zissou1', 10, type = 'continuous')
+
+sense_exp <- intergenic_overlap %>% 
+    mutate(sense_exp = median_activity) %>% 
+    filter(Orientation == 'Sense') %>% 
+    select(gene, sense_exp) %>% group_by(gene) %>% 
+    mutate(total_sense = sum(sense_exp)) %>% 
+    ungroup() %>% 
+    distinct()
+
+antisense_exp <- intragenic_overlap %>% 
+    mutate(antisense_exp = median_activity) %>%
+    filter(Orientation == 'Antisense') %>%
+    select(gene, antisense_exp) 
+
+antisense_exp <- intergenic_overlap %>% 
+    mutate(antisense_exp = median_activity) %>% 
+    filter(Orientation == 'Antisense') %>% 
+    select(gene, antisense_exp) %>% 
+    rbind(antisense_exp,.) %>%
+    group_by(gene) %>%
+    mutate(total_antisense = sum(antisense_exp)) %>% 
+    ungroup() %>% 
+    distinct()
+
+gene_coverage <-  read.table("../../processed_data/RNAseq_LB/B6_LB_1_GeneCoverage.bed", header = F) %>% 
+    select(gene='V4', coverage='V5', left = 'V2', right = 'V3') %>% 
+    mutate(length = right-left, RPK = coverage/length,
+           gene = gsub('NC_000913.2:', '', .$gene))
+
+promVcoverage <- full_join(sense_exp, antisense_exp, by = 'gene') %>%
+    left_join(., gene_coverage, by = 'gene') %>%
+    replace(., is.na(.), 0) %>% select(gene, total_sense, total_antisense, RPK) %>% distinct()
+
+
+sense_quant <- c(quantile(promVcoverage$total_sense))[2:5]
+antisense_quant <- c(quantile(promVcoverage$total_antisense))[3:5]
+promVcoverage <- full_join(sense_exp, antisense_exp, by = 'gene') %>% 
+    full_join(., gene_coverage, by = 'gene') %>% 
+    replace(., is.na(.),0)
+
+
+levels <- c('Low','Medium','High')
+promVcoverage$sense_levels <- as.character(cut(promVcoverage$total_sense, 
+                                               breaks = sense_quant, labels=levels)) %>% 
+    replace(., is.na(.),'None') %>%
+    as.factor() 
+
+levels <- c('Low','High')
+promVcoverage$antisense_levels <- as.character(cut(promVcoverage$total_antisense, 
+                                                   breaks = antisense_quant, 
+                                                   labels=levels)) %>% 
+    replace(., is.na(.),'None') %>% 
+    as.factor()
+
+
+promVcoverage$antisense_levels <- factor(promVcoverage$antisense_levels,
+                                         levels = c("None", "Low", "High"))
+promVcoverage$sense_levels <- factor(promVcoverage$sense_levels, 
+                                     levels = c("None", "Low", "Medium", "High"))
+
+promVcoverage %>% 
+    group_by(sense_levels, antisense_levels) %>%
+    mutate(median_RPK = median(RPK),
+           num_genes = n(),
+           median_coverage = median(coverage)) %>% 
+    ungroup() %>%
+    select(sense_levels, median_RPK, median_coverage, antisense_levels, num_genes) %>% 
+    distinct() %>%
+    ggplot(aes(sense_levels, antisense_levels, fill = log10(median_RPK))) + 
+    geom_tile() + 
+    geom_text(aes(label = paste(signif(median_RPK, 3),'\n(N=',num_genes,')', sep = ''), size = 8)) + 
+    scale_fill_gradientn(colors = pal) +
+    labs(x = 'Sense Promoter Activity', 
+         y = 'Antisense Promoter Activity', 
+         fill = 'log10(Median RPK)') +
+    theme(axis.title.x = element_text(size = 20),
+          axis.text.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20),
+          legend.text = element_text(size = 20),
+          legend.title = element_text(size = 20),
+          legend.position = 'bottom')
+
+
+promVcoverage %>% 
+    group_by(sense_levels, antisense_levels) %>%
+    mutate(mean_RPK = mean(RPK), 
+           num_genes = n(),
+           mean_coverage = mean(coverage)) %>% 
+    ungroup() %>%
+    select(sense_levels, mean_RPK, mean_coverage, antisense_levels, num_genes) %>% 
+    distinct() %>%
+    ggplot(aes(sense_levels, antisense_levels, fill = log10(mean_RPK))) + 
+    geom_tile() + 
+#    geom_text(aes(label = signif(mean_RPK, 3)), size = 8) +
+    geom_text(aes(label = paste(signif(mean_RPK, 3),'\n(N=',num_genes,')', sep = ''), size = 8)) + 
+
+    scale_fill_gradientn(colors = pal) +
+    labs(x = 'Sense Promoter Activity', 
+         y = 'Antisense Promoter Activity', 
+         fill = 'log10(Mean RPK)') +
+    theme(axis.title.x = element_text(size = 20),
+          axis.text.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20), 
+          axis.title.y = element_text(size = 20),
+          legend.text = element_text(size = 20),
+          legend.title = element_text(size = 20),
+          legend.position = 'bottom')
+
+
+
+ggsave('../../figs/fig3 (1)/CoveragebyPromoterStr.pdf', units = 'in',
+       height = 5, width = 5)
+```
+
+
+```{}
+# minimal promoters overlapping genes
+bedtools intersect  -b ../../ref/U00096.2_genes_clean.bed -a  ../../processed_data/peak_tile/minimal_promoters.bed > ../../processed_data/peak_tile/intragenic_promoter_gene_overlap.bed
+
+#generate random sequences with overlap
+#9393928
+#7127372
+#bedtools shuffle -seed 9393928 -incl ../../ref/U00096.2_genes_clean.bed -excl ../../processed_data/peak_tile/intragenic_promoter_gene_overlap.bed -i ../../processed_data/peak_tile/intragenic_promoter_gene_overlap.bed -g ../../ref/U00096.2.genome > ../../processed_data/peak_tile/intragenic_control_gene_overlap.bed
+
+```
+
+
+Get genes and translate
+```{r}
+genes_fasta <- read.table("../../ref/regulondb_genes.txt", skip = 8, fill = NA, sep = '\t') %>%
+    subset(., !grepl("ins", .$V2)) %>%
+    select( V1, gene = V2, left = V3, right = V4, strand = V5, sequence = V6) %>%
+    mutate(strand = gsub("forward", "+", strand),
+           strand = gsub("reverse", "-", strand),
+           sequence = as.character(sequence),
+           left = as.numeric(left)
+           ) %>%
+    na.omit() 
+
+genes_fasta <- genes_fasta[1:6] 
+
+genes_fasta$aa <- DNAStringSet(genes_fasta$sequence) %>% 
+    Biostrings::translate() %>% 
+    as.character()
+```
+
+Match genes and overlapping intragenic promoters/controls
+```{}
+# intragenic_promoters <- read.table("../../processed_data/peak_tile/intragenic_promoter_gene_overlap.bed") %>%
+#                                    select = c("gene"=='V4', 'prom_left'=='V2', 'prom_right'=='V3', 'score'=='V5', 'gene_strand'=='V6') %>%
+#                          mutate(#name = paste(name, "(", gene_strand, ")", sep = ''),
+#                                 prom_left = as.numeric(prom_left) + 1, 
+#                                 prom_right = as.numeric(prom_right))
+
+
+# Match promoters with overlapping genes
+promoter_gene_overlap_codon <- sqldf("SELECT a.*, b.*
+                   FROM genes_fasta AS a
+                   LEFT JOIN intragenic_overlap AS b
+                   ON b.peak_left BETWEEN a.left AND a.right
+                   OR b.peak_right BETWEEN a.left AND a.right") %>%
+                   na.omit() %>% distinct() %>%
+                   mutate(prom_start = ifelse(strand == '+', peak_left - left, right - peak_right),
+                          prom_end = ifelse(strand == '+', peak_right - left, right - peak_left),
+                          codon_start = (floor(peak_left / 3) * 3),
+                          codon_end = (ceiling(peak_right / 3) * 3),
+                          codon_length = (codon_end - codon_start)/3)# %>% filter(prom_start >= 0)
+
+
+```
+
+#Determine where codon resides within sequence
+```{r}
+
+promoter_gene_overlap_codon <- intragenic_overlap %>%
+                                #mutate(type = ifelse(peak_left  > gene_left & peak_right < gene_right,
+                                #                     'Fully Intragenic', 'Partially Intragenic')) %>%
+                                #filter(type == 'Fully Intragenic') %>% #Undo comment if switching to fully intragenic
+                                mutate(overlap_left = pmax(peak_left,gene_left),  #find overlapping region
+                                       overlap_right = pmin(gene_right, peak_right),
+                                       prom_start = ifelse(gene_strand == '+', 
+                                                           (overlap_left-gene_left), #how far in coding sequence is promoter?
+                                                           (gene_right-overlap_right)),
+                                       prom_end = ifelse(gene_strand == '+',
+                                                         overlap_right-gene_left,
+                                                         gene_right-overlap_left), 
+                                       overlap_length = prom_end-prom_start,
+                          codon_start = (floor(prom_start / 3) * 3), #Where in coding sequence is promoter?
+                          codon_end = (ceiling(prom_end / 3) * 3),
+                          codon_length = (codon_end - codon_start)/3) %>%
+                          left_join(.,select(genes_fasta, gene, sequence, aa), by = 'gene') #merge with sequences
+
+
+
+
+
+```
+
+
+Count codons
+```{r message=FALSE, echo=FALSE}
+
+for (i in 1:nrow(promoter_gene_overlap_codon)) {
+  
+    print(i)
+    seq <- print(promoter_gene_overlap_codon$sequence[i])
+    start <- print(promoter_gene_overlap_codon$codon_start[i])
+    end <- print(promoter_gene_overlap_codon$codon_end[i])
+     
+    prom <- substr(seq, start+1, end) #subset promoter sequence, add +1 since base 0
+    len <- nchar(prom)
+    promoter_gene_overlap_codon$codon_seq[i] <- prom
+    promoter_gene_overlap_codon$aa_len[i] <- len / 3
+}
+
+promoter_gene_overlap_codon <- filter(promoter_gene_overlap_codon, round(aa_len) == aa_len)
+
+codon_stats <- promoter_gene_overlap_codon$codon_seq %>%
+    paste(., collapse = "") %>%
+    DNAStringSet() %>%
+    oligonucleotideFrequency(width = 3, step = 3) %>%
+    t() %>%
+    as.data.frame() %>%
+    mutate(codon = row.names(.)) %>%
+    mutate(promoter_counts = V1, 
+           promoter_frequency = V1 / sum(V1)) %>%
+    select(-V1)
+
+# Add genome counts of whole genome
+temp <- genes_fasta %>%
+    mutate(len_seq = nchar(sequence) / 3, 
+           len_aa = nchar(aa)) %>%
+    filter(len_seq == len_aa) 
+
+codon_stats <- temp$sequence %>%
+    paste(., collapse ="") %>%
+    DNAStringSet() %>%
+    oligonucleotideFrequency(width = 3, step = 3) %>%
+    t() %>% 
+    as.data.frame() %>%
+    mutate(control_counts = V1, 
+           control_frequency = V1 / sum(V1)) %>%
+    select(-V1) %>% 
+    cbind(codon_stats, .)
+
+codon_stats$amino_acid <- DNAStringSet(codon_stats$codon) %>% 
+    Biostrings::translate() %>% 
+    as.character() 
+codon_stats$amino_acid[codon_stats$codon == 'CTG'] <- 'L' #MUST DO THIS SINCE NO.INIT.CODON DOESN'T WORK,
+codon_stats$amino_acid[codon_stats$codon == 'TTG'] <- 'L'
+
+```
+
+
+ChiSquare of AA frequencies
+```{r}
+chisq_aa <- function(aa, df) {
+  print(aa)
+  total_prom <- sum(df$aa_count_prom)
+  total_control <- sum(df$aa_count_ctrl)
+  codon_count_promoter <- df$aa_count_prom[df$amino_acid == aa]
+  codon_count_control <- df$aa_count_ctrl[df$amino_acid == aa]
+  count_table <- rbind(c(codon_count_promoter, codon_count_control),
+                        c(total_prom, total_control))
+  result <- chisq.test(count_table)
+  return(result$p.value)
+}
+
+aa_table <- codon_stats %>% 
+    group_by(amino_acid) %>%
+    mutate(aa_count_prom = sum(promoter_counts),
+           aa_count_ctrl = sum(control_counts)) %>% 
+    ungroup() %>%
+    select(amino_acid, aa_count_prom, aa_count_ctrl) %>% 
+    distinct()
+
+aa_Xsq <- data.frame(matrix(nrow = 21, ncol = 2))
+
+for (i in 1:nrow(aa_table)) {
+  aa <- aa_table$amino_acid[i]
+  aa_Xsq$amino_acid[i] <- aa 
+  aa_Xsq$p.val[i] <- chisq_aa(aa, aa_table) 
+}
+
+aa_Xsq <- aa_Xsq %>% 
+    select(amino_acid, p.val) %>%
+    mutate(p.val.adjust = p.adjust(p.val))
+```
+
+
+
+```{r}
+signif_aa <- filter(aa_Xsq, p.val.adjust < .05)
+  
+sum(codon_stats$promoter_counts)
+sum(codon_stats$control_counts)
+
+temp <- codon_stats %>% 
+    group_by(amino_acid) %>%
+    mutate(aa_count_prom = sum(promoter_frequency), 
+           aa_count_ctrl = sum(control_frequency),
+           promoter_enrichment = log2(aa_count_prom / aa_count_ctrl),
+           Type = ifelse(2^promoter_enrichment > 1, 'Enriched', 'Depleted')) %>%
+    ungroup() %>%
+    select(amino_acid, promoter_enrichment, Type, aa_count_ctrl) %>%
+    distinct() %>% 
+    left_join(., signif_aa) 
+
+
+ggplot(temp, aes(reorder(amino_acid, promoter_enrichment), promoter_enrichment)) + 
+    geom_bar(aes(fill = log2(aa_count_ctrl)), stat = "identity", color = 'black', alpha = 0.8) +
+    scale_fill_gradientn(colours = c('red', 'white', 'blue')) +
+    labs(x = 'Amino Acid', 
+         y = 'log2(Relative AA composition)', 
+         fill = 'log2(Amino Acid Frequency)') +
+    theme(axis.text.x = element_text(size = 24), 
+          axis.text.y = element_text(size = 24),
+          axis.title.x.bottom = element_text(size = 24),
+          axis.title.y.left = element_text(size = 24),
+          legend.key = element_rect(color = "black")) + 
+    coord_flip() +
+    geom_point(data = temp[complete.cases(temp),], 
+               aes(x= amino_acid,
+                   y = promoter_enrichment + .05 * sign(promoter_enrichment)), shape = 8, size = 2) 
+
+
+ggsave('../../figs/fig3 (1)/AA_bias.pdf', units = 'in', width = 10.29, height = 8.51)
+
+```
+
+Chi square test of significant codons within each group
+```{r}
+chisq_codon <- function(codon, df) {
+  print(codon)
+  total_prom <- sum(df$promoter_counts)
+  total_control <- sum(df$control_counts)
+  codon_count_promoter <- df$promoter_counts[df$codon == codon]
+  codon_count_control <- df$control_counts[df$codon == codon]
+  count_table <- rbind(c(codon_count_promoter, codon_count_control),
+                       c(total_prom, total_control))
+  result <- chisq.test(count_table)
+  return(result$p.value)
+}
+
+codon_table_full <- data.frame(matrix(nrow = 64, ncol = 2)) %>%
+                      select('codon'='X1', 'p.val'='X2') 
+  
+for (i in 1:nrow(aa_table)) {
+
+    aa <- aa_table$amino_acid[i]
+    print(aa)
+    
+    temp <- filter(codon_stats, amino_acid == aa)
+    
+    codon_table <- data.frame(matrix(nrow = 6))
+    
+    for (i in 1:nrow(temp)) {
+        cd <- temp$codon[i]
+        codon_table$codon[i] <- cd
+        codon_table$p.val[i] <- chisq_codon(cd, temp)
+    
+}
+
+codon_table_full <- distinct(codon_table) %>%
+                      select(codon, p.val) %>%
+                      rbind(codon_table_full, .)
+}
+    
+codon_table_full <- codon_table_full[complete.cases(codon_table_full),] %>%
+                      mutate(p.val.adjust = p.adjust(p.val, method = 'fdr'))
+
+
+```
+
+
+Identify codon bias between groups
+```{r}
+signif_codon <- filter(codon_table_full, p.val.adjust < .05)
+
+temp <- codon_stats %>% group_by(amino_acid) %>% 
+    mutate(codon_frequency_prom = promoter_counts / sum(promoter_counts),
+           codon_frequency_ctrl = control_counts / sum(control_counts),
+           enrichment = log2(codon_frequency_prom / codon_frequency_ctrl),
+           Type = ifelse(2 ^ enrichment > 1, 'Abundant', 'Depleted')) %>% 
+    ungroup() %>%
+    select(codon, amino_acid, enrichment, Type, codon_frequency_ctrl) %>% 
+    # filter(amino_acid == 'L') %>% #Remove this for all amino acids
+    distinct() %>% 
+    left_join(., signif_codon, by = 'codon')
+
+ggplot(temp,aes(codon, enrichment)) + 
+    geom_bar(aes(fill = log2(codon_frequency_ctrl)), stat = "identity", 
+             color = 'black', alpha = 0.8) +
+    scale_fill_gradientn(colours = c('red', 'white', 'blue')) +
+    labs(x = 'Codon', 
+         y = 'log2(Relative Codon composition)',
+         color = '', 
+         title = "Differential Codon usage at Intragenic Promoters") +
+        geom_hline(yintercept = 0) +
+        theme(axis.text.x = element_text(size = 18, angle = 90), 
+        axis.text.y = element_text(size = 18),
+        axis.title.x.bottom = element_text(size = 18),
+        axis.title.y.left = element_text(size = 18)) + 
+        geom_point(data = temp[complete.cases(temp) ,],
+                   aes(x = codon, y = enrichment + 0.05 * sign(enrichment)),
+                   shape = 8, size = 2) +
+        facet_grid(~amino_acid, scale = "free_x",space = 'free_x')
+
+
+ggsave('../../figs/fig3 (1)/Codon_bias_genome.pdf', units = 'in', width = 21.58, height = 5.02)
+
+```
+
+
+Can we predict expression of promoters with sense expression only?
+```{r}
+
+
+promvGene <- intergenic_overlap %>% filter(peak_strand == gene_strand) %>% 
+                       left_join(., gene_coverage, by = 'gene')  
+
+cor <- cor(promvGene$median_activity, promvGene$RPK)
+
+
+ggplot(promvGene, aes(median_activity, RPK)) + geom_point() +
+                       scale_x_log10() + scale_y_log10() +
+          annotate('text', label = paste('r = ',signif(cor,3)), x = 20, y = .5) +
+          labs(x = 'Promoter Activity', title = ' Promoter activity vs Gene Expression') + geom_smooth(method = 'lm')
+                  
+
+```
+
+
+
+
+
+

@@ -5,6 +5,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+setwd('~/Google Drive/Kosuri_Lab/ecoli_promoter_mpra/scripts/figs')
+knitr::opts_knit$set(root.dir = '~/Google Drive/Kosuri_Lab/ecoli_promoter_mpra/scripts/figs')
+
 library(dplyr)
 library(ggplot2)
 require(cowplot)
@@ -24,6 +27,7 @@ Figure 1C - Technical replicates
 
 ```{r}
 neg <- subset(Endo2, grepl("neg_control", Endo2$name))
+pos <- subset(Endo2, grepl("pos_control", Endo2$name))
 
 cor <- cor(Endo2$RNA_exp_1, Endo2$RNA_exp_2)
 
@@ -35,13 +39,14 @@ ggplot(Endo2, aes(RNA_exp_1, RNA_exp_2)) +
   xlab('Technical Replicate #1') + ylab('Technical Replicate #2') +
   ggtitle('Correlation between replicate TSS measurements') +
   geom_point(data = neg,aes(RNA_exp_1, RNA_exp_2), color = "firebrick1") +
+  geom_point(data = pos,aes(RNA_exp_1, RNA_exp_2), color = "dodgerblue1") +
   annotate("text", label = "Negative Controls", x = 20, y = .5, color = 'firebrick1', size = 8) +
   theme(axis.text.x = element_text(size = 24), 
         axis.text.y = element_text(size = 24),
         axis.title.x.bottom = element_text(size = 24),
         axis.title.y.left = element_text(size = 24))
 
-ggsave('../../figs/fig1/tss_replicate_corr.pdf', units = 'in', width = 7.29, height = 4.51)
+ggsave('../../figs/fig1/tss_replicate_corr.pdf', units = 'in', width = 5, height = 5)
 ```
 
 
@@ -56,8 +61,9 @@ mid_PrrsE <- mean(PrrsE)
 rm(rrsE)
 
 ggplot(Endo2, aes(expn_med_fitted_scaled)) +
-      geom_histogram(color = 'blue', fill = 'blue', alpha = .2, bins = 100) +
+      geom_histogram(color = 'black', fill = 'black', alpha = .2, bins = 100) +
       geom_histogram(data=neg, aes(expn_med_fitted_scaled), color = 'red', fill = 'red', alpha = .2, bins = 100) +
+      geom_histogram(data=pos, aes(expn_med_fitted_scaled), color = 'dodgerblue2', fill = 'dodgerblue2', alpha = .2, bins = 100) +
       scale_x_log10(limits = c(0.35,100)) +
       scale_y_log10() +  
       annotation_logticks(sides = 'bl') +
@@ -113,7 +119,7 @@ Figure 1E, general proportion of active/inactive, not broken down by source.
 Endo2 %>% 
     filter(category == 'tss') %>% 
     ggplot(aes(active)) + 
-        geom_bar(aes(fill = active)) +
+        geom_bar(aes(fill = active), color = 'black') +
         scale_fill_manual(values = c("#2E6EB7", "#F6BA60")) +
         scale_x_discrete(expand = c(0, 2)) +
         theme(legend.position = c(0,1),

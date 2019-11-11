@@ -1,0 +1,299 @@
+---
+title: "Figure2_V3"
+author: "Guillaume Urtecho"
+date: "8/28/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+setwd('~/Google Drive/Kosuri_Lab/ecoli_promoter_mpra/scripts/figs')
+knitr::opts_knit$set(root.dir = '~/Google Drive/Kosuri_Lab/ecoli_promoter_mpra/scripts/figs')
+
+options(stringsAsFactors = F)
+
+library(dplyr)
+library(ggplot2)
+require(cowplot)
+library(sqldf)
+library(matrixStats)
+library(reshape2)
+library(reshape2)
+library(Biostrings)
+library(tidyverse)
+library(scales)
+
+options(scipen = 10000)
+
+data_all <- read.table('../../processed_data/peak_tile/peak_tile_expression_formatted_std.txt',
+                       header = T)
+
+negatives <- filter(data_all, category == 'neg_control')
+
+peak_data <- data_all %>% 
+    filter(category == 'tile')
+```
+
+```{}
+tfbs_regulondb <- read.table("../../ref/regulondb_tfbs_U00096.2.txt", 
+                             skip = 30, fill = NA, sep = '\t') %>% 
+    mutate(strand = ifelse(V6 == 'forward', '+', '-')) %>%
+    select(tfbs = V2, tfbs_left = V4, tfbs_right = V5, strand) %>%
+    distinct()
+```
+
+#How many active TSSs in promoter regions?
+```{bash}
+
+bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/active_TSS_all.bed -wb | wc -l
+
+#bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/active_TSS_plus.bed -wo > ../../processed_data/endo_tss/lb/active_TSS_promoter_overlap_plus.bed
+
+#bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/active_TSS_minus.bed -wo > ../../processed_data/endo_tss/lb/active_TSS_promoter_overlap_minus.bed
+
+```
+
+How many inactive TSSs in promoter regions?
+```{bash}
+
+bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/inactive_TSS_all.bed -wb | wc -l
+
+```
+How many negative controls in promoter regions?
+```{bash}
+
+bedtools intersect -s -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/endo_tss/lb/negative_TSS_plus.bed -wb #| wc -l
+
+```
+
+
+2C - Fragment Activity at TSSs
+
+```{r}
+is.nan.data.frame <- function(x)
+do.call(cbind, lapply(x, is.nan))
+
+positions <- seq(10, 1150, 10) - 620 
+
+plus_tss <- read.table("../../processed_data/frag/lb/plus_tss_counts.txt", 
+                       skip = 3, fill = TRUE, sep = '\t', header = F)
+plus_tss[is.nan(plus_tss)] <- 0
+names(plus_tss) <- positions
+
+plus_tss_active <-plus_tss[c(1:1009), ]
+plus_tss_inactive <-plus_tss[c(1010:8231), ]
+plus_tss_negative <- plus_tss[c(8232:8705), ]
+
+minus_tss <- read.table("../../processed_data/frag/lb/minus_tss_counts.txt", 
+                        skip =3, sep = '\t', header = F)
+minus_tss[is.nan(minus_tss)] <- 0
+
+names(minus_tss) <- positions
+minus_tss_active <-minus_tss[c(1:1002), ]
+minus_tss_inactive <-minus_tss[c(1003:8476), ]
+
+tss_active <- rbind(plus_tss_active, minus_tss_active) %>%
+    melt() %>%
+    mutate(variable = as.numeric(as.character(variable)),
+           type = 'Active TSS')
+                  
+names(tss_active) <- c('position', 'coverage', 'Type')
+
+tss_inactive <- rbind(plus_tss_inactive, minus_tss_inactive) %>%
+    melt(by = 'type') %>%
+    mutate(variable = as.numeric(as.character(variable)),
+           type = 'Inactive TSS')
+names(tss_inactive) <- c('position', 'coverage', 'Type')
+
+tss_negative <- plus_tss_negative %>%
+        melt() %>%
+        mutate(variable = as.numeric(as.character(variable)),
+               type = 'Negative TSS')
+
+names(tss_negative) <- c('position', 'coverage', 'Type')
+```
+
+```{r}
+rbind(tss_active, tss_inactive, tss_negative) %>% 
+    ggplot(., aes(x = position, y = coverage)) +
+    geom_smooth(method ='auto', aes(fill = Type, color = Type)) +
+    geom_vline(xintercept = c(1), linetype = 'dashed') +
+    scale_color_manual(breaks = c('Active TSS', 'Inactive TSS', "Negative TSS"),
+                     values = c("#2E6EB7", "#F6BA60", "grey")) +
+    scale_fill_manual(breaks = c('Active TSS', 'Inactive TSS', "Negative TSS"),
+                     values = c("#2E6EB7", "#F6BA60", "grey")) +
+    labs(x ='Position Relative to TSS',
+         y = 'Mean Promoter Activity\n(per Base)') +
+    theme(axis.title.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20), 
+        axis.text.x = element_text(size = 20), 
+        axis.title.y = element_text(size = 20), 
+        legend.text = element_text(size = 20),
+        legend.title = element_blank())
+
+ggsave('../../figs/fig2/tss_frag_activity.pdf', units = 'in',
+       height = 4.5, width = 8)
+```
+
+
+
+Figure3B, MraZ Promoter
+
+```{r}
+threshold <- 1
+peak_data %>% 
+    filter(grepl('89077_89780', name)) %>% 
+    ggplot(aes(tile_start + peak_start, expn_med_fitted_scaled)) + 
+    geom_point(aes(color = active)) +
+    scale_y_continuous(breaks = seq(0.5, 3, 0.5)) +
+    geom_hline(yintercept = threshold, linetype = 'dashed') +
+    geom_line(linetype = 'dashed') +
+    scale_color_manual(values = c('red', 'black')) +
+    labs(x = 'Tile Start Position', y = 'Expression', color = '', title = "mraZ Promoter") +
+    annotate("text", label = "Threshold", x = 89125, y = threshold+.1) +
+    theme(axis.text = element_text(size = 20),
+          axis.title = element_text(size = 20),
+          title = element_text(size = 24),
+          legend.text = element_text(size = 20))
+
+ggsave("../../figs/fig2/MraZPromoter.pdf", units = 'in',
+       height = 5, width = 7)
+```
+
+Subset active promoters and print for merging
+```{r}
+peak_data %>% 
+    filter(expn_med_fitted_scaled > threshold) %>% 
+    nrow()  #15013 sequences with more active expression
+
+peak_data %>% 
+    filter(expn_med_fitted_scaled > threshold) %>%
+    mutate(genome = "U00096.2",
+           left = as.integer(tile_start+peak_start),
+           right = tile_end+peak_start) %>% arrange(left) %>%
+    select(genome, left, right, name, expn_med_fitted_scaled, strand) %>%
+    write.table(., "../../processed_data/peak_tile/active_tiles.bed", 
+                row.names = F, quote = F, sep = '\t', col.names = FALSE)
+```
+
+
+Identify overlapping active regions
+
+```{bash}
+bedtools merge -i ../../processed_data/peak_tile/active_tiles.bed -d -100 -s -c 5,6 -o median,distinct > ../../processed_data/peak_tile/merged_active_tiles.bed
+```
+
+```{r}
+read.table("../../processed_data/peak_tile/merged_active_tiles.bed") %>%
+    mutate(name = paste(V2, "_", V3, "_", V5, sep = "")) %>%
+    select(V1, V2, V3, name, V4, V5) %>%
+    write.table(., "../../processed_data/peak_tile/merged_active_tiles.bed",
+                  col.names = FALSE,
+                  sep = '\t',
+                  row.names = F,
+                  quote = F)
+```
+
+Identify active tiles that overlap peaks
+```{bash}
+bedtools intersect -c -a ../../processed_data/frag/lb/U00096.2_plus_minus_called_peaks_threshold1.1_merge40_min60.bed -b ../../processed_data/peak_tile/merged_active_tiles.bed -s > ../../processed_data/peak_tile/collapsed_per_peak.bed
+                                    
+```
+
+3C - number of promoters per peak
+```{r}
+collapsed_per_Peak <- read.table("../../processed_data/peak_tile/collapsed_per_peak.bed",
+                                 col.names = c("chrom", 'start', 'end', 'name', 'peak_score',
+                                               'strand', 'score1', 'score2', 'num_sub_peaks')) %>% 
+    separate(name, into = c('peak_start', 'peak_end', 'strand'), sep = '_', remove = F, convert = T) %>% 
+    # only consider peaks with mapped tiles, eliminates 123 peaks
+    semi_join(peak_data, by = c('peak_start', 'peak_end'))
+
+collapsed_per_Peak %>% 
+    filter(num_sub_peaks < 10) %>% 
+    ggplot(aes(num_sub_peaks)) +
+        geom_bar(stat = "count", width = .8, fill = '#528ECB', color = 'black') +
+        geom_text(stat = 'count', aes(label = ..count..), vjust = -0.2, size = 10) +
+        scale_y_log10() + annotation_logticks(sides = 'l') + 
+        labs(x = 'Number of promoters per region', y = "Count") + 
+        scale_x_continuous(breaks = pretty_breaks(n = 7)) +
+        theme(axis.text = element_text(size = 20),
+              axis.title = element_text(size = 20),
+              legend.text = element_text(size = 20))
+
+ggsave("../../figs/fig2/promoters_per_peak.pdf", units = 'in',
+       height = 4, width = 6)
+
+#How many promoters do we identify?
+
+sum(collapsed_per_Peak$num_sub_peaks) #2,228
+
+```
+
+
+3D) Identify minimal promoter unit, 
+```{r}
+minimal_promoters <- read.table("../../processed_data/peak_tile/merged_active_tiles.bed", header = F,
+                                col.names = c("genome", 'left', 'right', 'name', 'score', 'strand')) %>% 
+                                mutate(left_minimal = right - 150,
+                                right_minimal = left + 150,
+                                minimal_length = right_minimal - left_minimal,
+                                name = paste(left_minimal, "_", right_minimal, "_", strand, sep = '')) %>%
+                                filter(right_minimal - left_minimal > 0)
+
+minimal_promoters %>% 
+    select(genome, left_minimal, right_minimal, name,score, strand) %>%
+    write.table(., "../../processed_data/peak_tile/minimal_promoters.bed", 
+                row.names = F, quote = F, col.names = FALSE, sep = '\t')
+
+# sizes of minimal promoters
+a <- ggplot(filter(minimal_promoters, minimal_length > 0), aes(minimal_length)) + 
+    geom_histogram(color = 'black',
+                   binwidth = 10,
+                   fill = '#528ECB',
+                   color = 'black') +
+    scale_x_continuous(breaks = pretty_breaks(n=8)) + 
+    labs(x = 'Length of minimum promoter',
+         y = 'Count',
+         title = 'Sizes of minimum promoter regions') +
+    geom_point(shape = 25, fill = 'firebrick3', color = 'navyblue', 
+               aes(x = 40, y = 300), size = 3) +
+    geom_point(shape = 25, fill = 'navyblue', color = 'navyblue', 
+               aes(x = 150, y = 450), size = 3) +
+    theme(axis.text = element_text(size = 20),
+          axis.text.x = element_text(size = 20, angle = 45, hjust = 1),
+          axis.title = element_text(size = 20),
+          legend.text = element_text(size = 20))
+
+b <- minimal_promoters %>% 
+    filter(minimal_length > 35 & minimal_length < 45) %>%
+    ggplot(aes(score)) + 
+    geom_density(color = 'firebrick3', alpha = 0.4) +
+    scale_x_log10(limits = c(NA, 30)) + 
+    labs(y = 'Density', x = '')
+
+c <- minimal_promoters %>% 
+    filter(minimal_length == 150) %>%
+    ggplot(aes(score)) + 
+    geom_density(color = 'navyblue', alpha = 0.4) +
+    scale_x_log10(limit = c(NA,30)) + 
+    labs(y = 'Density', x = 'Minimal Promoter Expression')
+
+dens <- plot_grid(b,c, ncol = 1)
+plot_grid(a,dens, ncol = 2, rel_heights = c(1, .8))
+
+
+ggsave("../../figs/fig2/minimal_promoter_size.pdf", units = 'in', 
+       width = 7, height = 5)
+```
+
+
+
+
+#So how many total promoters? add 2252 minimal promoters
+```{bash}
+
+#Number only in tss library
+bedtools intersect -v -a ../../processed_data/endo_tss/lb/active_TSS_all.bed -b ../../processed_data/peak_tile/merged_active_tiles.bed -s | wc -l
+
+```
+
