@@ -142,7 +142,7 @@ write.table(select(combined, variant, expn_med_fitted_scaled),
 # just TSS for gkmSVM
 tss %>% 
     select(variant, expn_med_fitted_scaled, start, end, name) %>% 
-    write.table('../processed_data/endo_tss/lb/tss_scramble_peak_expression_model_format.txt',
+    write.table('../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt',
                 row.names = F, col.names = F, quote = F, sep = '\t')
 
 
