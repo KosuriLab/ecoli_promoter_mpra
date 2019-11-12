@@ -12,9 +12,9 @@ split:
 # generate random sequences equal to training set to compute kmer frequency
 # in random genomic sequence
 random:
-	bedtools random -l 150 -n 87164 -g ../../ref/U00096.2.chrom.sizes -seed 123 > \
+	../../bin/bedtools random -l 150 -n 87164 -g ../../ref/U00096.2.chrom.sizes -seed 123 > \
 	$(DIR)/genome_random_train.bed
-	bedtools getfasta -fi ../../ref/U00096.2.fasta -bed $(DIR)/genome_random_train.bed \
+	../../bin/bedtools getfasta -fi ../../ref/U00096.2.fasta -bed $(DIR)/genome_random_train.bed \
 	-fo $(DIR)/genome_random_train.txt -name -tab -s 
 
 

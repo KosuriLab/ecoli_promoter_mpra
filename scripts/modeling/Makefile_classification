@@ -12,9 +12,9 @@ split:
 # generate random sequences equal to training set to compute kmer frequency
 # in random genomic sequence
 random:
-	bedtools random -l 150 -n 53326 -g ../../ref/U00096.2.chrom.sizes -seed 123 > \
+	../../bin/bedtools random -l 150 -n 78858 -g ../../ref/U00096.2.chrom.sizes -seed 123 > \
 	$(DIR)/genome_random_train_classification.bed
-	bedtools getfasta -fi ../../ref/U00096.2.fasta -bed $(DIR)/genome_random_train_classification.bed \
+	../../bin/bedtools getfasta -fi ../../ref/U00096.2.fasta -bed $(DIR)/genome_random_train_classification.bed \
 	-fo $(DIR)/genome_random_train_classification.txt -name -tab -s 
 
 
@@ -99,7 +99,7 @@ nn:
 # genome split for only TSS library
 split_tss:
 	python define_genome_splits.py 0.75 4639675 \
-	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt
+	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt \
 	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt
 
 
