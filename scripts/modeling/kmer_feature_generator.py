@@ -49,7 +49,8 @@ def kmer_filter_random(df, df_random, y_train):
     filtered_kmers = []
 
     for x in df.columns:
-        kmer_corr = abs(np.corrcoef(y_train, df[x])[0, 1])
+        # print(len(y_train), df[x].shape, df_random[x].shape)
+	kmer_corr = abs(np.corrcoef(y_train, df[x])[0, 1])
         random_corr = abs(np.corrcoef(y_train, df_random[x])[0, 1])
         if kmer_corr >= random_corr:
             filtered_kmers.append(x)
