@@ -98,7 +98,7 @@ Training samples: 87,164
 Test samples: 30,392
 
 ```{r}
-kmer_predictions <- read.table('../../processed_data/combined/20190610_kmer_linear_predictions.txt',
+kmer_predictions <- read.table('../../processed_data/combined/20191111_kmer_linear_predictions.txt',
                                col.names = c('predicted', 'observed'))
 r.squared_kmer <- summary(lm(observed ~ predicted, kmer_predictions))$r.squared
 ggplot(kmer_predictions, aes(predicted, observed)) + geom_point() +
@@ -114,7 +114,7 @@ kmer_accuracy
 ```
 
 ```{r}
-kmer_pls_predictions <- read.table('../../processed_data/combined/20190610_kmer_pls_predictions.txt',
+kmer_pls_predictions <- read.table('../../processed_data/combined/20191111_kmer_pls_predictions.txt',
                                col.names = c('predicted', 'observed'))
 r.squared_kmer_pls <- summary(lm(observed ~ predicted, kmer_pls_predictions))$r.squared
 ggplot(kmer_pls_predictions, aes(predicted, observed)) + geom_point() +
@@ -130,7 +130,7 @@ pls_accuracy
 ```
 
 ```{r}
-rfr_onehot <- read.table('../../processed_data/combined/20190611_rfr_onehot_tss_scramble_peak_floored_predictions.txt',
+rfr_onehot <- read.table('../../processed_data/combined/20191111_rfr_onehot_tss_scramble_peak_floored_predictions.txt',
                                      col.names = c('predicted', 'observed'))
 rfr_onehot_accuracy <- rmserr(rfr_onehot$predicted, rfr_onehot$observed)
 rfr_onehot_accuracy
@@ -146,7 +146,7 @@ ggplot(rfr_onehot, aes(predicted, observed)) + geom_point() +
 ```
 
 ```{r}
-rfr <- read.table('../../processed_data/combined/20190617_rfr_tss_scramble_peak_floored_predictions.txt',
+rfr <- read.table('../../processed_data/combined/20191111_rfr_tss_scramble_peak_floored_predictions.txt',
                               col.names = c('predicted', 'observed'))
 rfr_accuracy <- rmserr(rfr$predicted, rfr$observed)
 rfr_accuracy
@@ -156,13 +156,13 @@ rfr_accuracy
 r.squared_rfr <- summary(lm(observed ~ predicted, rfr))$r.squared
 ggplot(rfr, aes(predicted, observed)) + geom_point() +
     geom_smooth(method = 'lm') + 
-    annotate('text', x = 20, y = 1, parse = T, label = paste('R^2==', signif(r.squared_rfr, 3))) +
+    annotate('text', x = 30, y = 0.001, parse = T, label = paste('R^2==', signif(r.squared_rfr, 3))) +
     scale_x_log10() + scale_y_log10() + annotation_logticks() +
     labs(title = 'Random forest regression (k-mer counts)')
 ```
 
 ```{r}
-mlp <- read.table('../../processed_data/combined/20190610_mlp_tss_scramble_peak_predictions.txt',
+mlp <- read.table('../../processed_data/combined/20191112_mlp_tss_scramble_peak_predictions.txt',
                   col.names = c('predicted', 'observed'))
 
 r.squared_mlp <- summary(lm(observed ~ predicted, mlp))$r.squared
@@ -179,7 +179,7 @@ mlp_accuracy
 ```
 
 ```{r}
-mlp_3to6 <- read.table('../../processed_data/combined/20190608_mlp_tss_3to6mer_scramble_peak_predictions.txt',
+mlp_3to6 <- read.table('../../processed_data/combined/20191112_mlp_tss_3to6mer_scramble_peak_predictions.txt',
                        col.names = c('predicted', 'observed'))
 r.squared_mlp_3to6 <- summary(lm(observed ~ predicted, mlp_3to6))$r.squared
 ggplot(mlp_3to6, aes(predicted, observed)) + geom_point() +
@@ -195,7 +195,7 @@ mlp_3to6_accuracy
 ```
 
 ```{r}
-nn <- read.table('../../processed_data/combined/20190611_tss_scramble_peak_regression_hyperparam_tuned_predictions.txt',
+nn <- read.table('../../processed_data/combined/20191111_tss_scramble_peak_regression_hyperparam_tuned_predictions.txt',
                  col.names = c('sequence', 'predicted', 'observed'))
 nn_accuracy <- rmserr(nn$predicted, nn$observed)
 nn_accuracy
