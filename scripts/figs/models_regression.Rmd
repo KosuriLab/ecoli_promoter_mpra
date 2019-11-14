@@ -251,7 +251,7 @@ gg2 <- ggplot(accuracy, aes(method, r.squared)) +
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1))
 
 plot_grid(gg1, gg2, nrow = 2)
-ggsave('../../figs/model_comparison_regression.pdf')
+ggsave('../../figs/fig6/model_comparison_regression.pdf')
 ```
 
 
@@ -277,7 +277,7 @@ gg2 <- ggplot(accuracy, aes(method, r.squared)) +
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1))
 
 plot_grid(gg1, gg2, nrow = 2)
-ggsave('../../figs/model_comparison_regression_color.pdf',
+ggsave('../../figs/fig6/model_comparison_regression_color.pdf',
        units = 'in', width = 8, height = 5)
 ```
 
