@@ -1,12 +1,15 @@
 DATE := $(shell date +%Y%m%d)
 DIR=../../processed_data/combined
 
+all: split random kmer_filtered logistic pls kmer rf_kmer rf_onehot mlp_6mer \
+	mlp_3to6
+
 # define genome splits
 split:
 	python define_genome_splits.py 0.75 4639675 \
 	$(DIR)/tss_scramble_peak_expression_model_format.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format.txt \
-	--classification --neg_threshold 0.75 --pos_threshold 1.25
+	--classification --neg_threshold 0.24 --pos_threshold 0.25
 
 
 # generate random sequences equal to training set to compute kmer frequency
@@ -100,7 +103,8 @@ nn:
 split_tss:
 	python define_genome_splits.py 0.75 4639675 \
 	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt \
-	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt
+	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt \
+	--classification --neg_threshold 0.24 --pos_threshold 0.25
 
 
 gkmsvm: 

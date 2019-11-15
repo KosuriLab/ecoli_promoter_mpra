@@ -86,7 +86,7 @@ set_std_threshold_peak <- function(df) {
     neg_median <- median(neg$expn_med_fitted)
     # threshold <- neg_median + (3 * neg_mad)
     # scale = 1 / threshold
-    # print(c(threshold, scale))
+    print(c(threshold, scale))
     # return(df$expn_med_fitted * scale)
     return(df$expn_med_fitted - neg_median)
 }
