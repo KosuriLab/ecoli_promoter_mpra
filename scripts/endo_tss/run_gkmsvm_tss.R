@@ -25,8 +25,8 @@ train <- read.table('../../processed_data/endo_tss/lb/model_files/tss_expression
 train$name <- paste0('seq', seq(1:nrow(train)))
 
 # split train into positive and negative
-train_positive <- filter(train, expression >= 1)
-train_negative <- filter(train, expression < 1)
+train_positive <- filter(train, expression >= 0.25)
+train_negative <- filter(train, expression < 0.24)
 
 write.fasta(as.list(train_positive$sequence), names = train_positive$name, nbchar = 300,
             file.out = '../../processed_data/endo_tss/lb/model_files/tss_train_genome_split_positives.fasta')
