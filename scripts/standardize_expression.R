@@ -69,33 +69,34 @@ rlp6$expn_med_fitted <- standardize(tss, rlp6)
 # column for consistency
 tss$expn_med_fitted <- tss$expn_med
 
+set_scale <- function(df) {
+    neg <- filter(df, category == 'neg_control')
+    neg_median <- median(neg$expn_med_fitted)
+    return(df$expn_med_fitted - neg_median)
+}
+
+
 set_std_threshold <- function(df) {
     neg <- filter(df, category == 'neg_control')
     neg_sd <- sd(neg$expn_med_fitted)
     neg_median <- median(neg$expn_med_fitted)
-    # threshold <- neg_median + (2 * neg_sd)
-    # scale = 1 / threshold
-    # print(c(threshold, scale))
-    # return(df$expn_med_fitted * scale)
-    return(df$expn_med_fitted - neg_median)
+    threshold <- neg_median + (2 * neg_sd)
+    return(threshold)
 }
 
 set_std_threshold_peak <- function(df) {
     neg <- filter(df, category == 'neg_control')
     neg_mad <- mad(neg$expn_med_fitted)
     neg_median <- median(neg$expn_med_fitted)
-    # threshold <- neg_median + (3 * neg_mad)
-    # scale = 1 / threshold
-    print(c(threshold, scale))
-    # return(df$expn_med_fitted * scale)
-    return(df$expn_med_fitted - neg_median)
+    threshold <- neg_median + (3 * neg_mad)
+    return(threshold)
 }
 
-tss$expn_med_fitted_scaled <- set_std_threshold(tss)
-scramble$expn_med_fitted_scaled <- set_std_threshold(scramble)
-peak_tile$expn_med_fitted_scaled <- set_std_threshold_peak(peak_tile)
-flp3$expn_med_fitted_scaled <- set_std_threshold(flp3)
-rlp6$expn_med_fitted_scaled <- set_std_threshold(rlp6)
+tss$expn_med_fitted_scaled <- set_scale(tss)
+scramble$expn_med_fitted_scaled <- set_scale(scramble)
+peak_tile$expn_med_fitted_scaled <- set_scale(peak_tile)
+flp3$expn_med_fitted_scaled <- set_scale(flp3)
+rlp6$expn_med_fitted_scaled <- set_scale(rlp6)
 
 # now that expression is standardized, calculate change in expression for scramble
 # calculate change in expression: unscramble - scramble
@@ -107,14 +108,18 @@ scramble <- scramble %>%
            relative_exp = RNA_exp_sum_ave / unscrambled_exp)
 
 # create active and inactive columns for TSS and alternate landing pads
+tss_threshold <- set_std_threshold(tss)
 tss <- tss %>% 
-    mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
+    mutate(active = ifelse(expn_med_fitted_scaled >= tss_threshold, 'active', 'inactive'))
+peak_threshold <- set_std_threshold(peak_tile)
 peak_tile <- peak_tile %>% 
-    mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
+    mutate(active = ifelse(expn_med_fitted_scaled >= peak_threshold, 'active', 'inactive'))
+flp3_threshold <- set_std_threshold(flp3)
 flp3 <- flp3 %>% 
-    mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
+    mutate(active = ifelse(expn_med_fitted_scaled >= flp3_threshold, 'active', 'inactive'))
+rlp6_threshold <- set_std_threshold(rlp6)
 rlp6 <- rlp6 %>% 
-    mutate(active = ifelse(expn_med_fitted_scaled >= 1, 'active', 'inactive'))
+    mutate(active = ifelse(expn_med_fitted_scaled >= rlp6_threshold, 'active', 'inactive'))
 
 write.table(tss, file = '../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted_std.txt',
             row.names = F, quote = F, sep = '\t')

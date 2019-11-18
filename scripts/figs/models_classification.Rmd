@@ -171,7 +171,9 @@ plot(gkmsvm_pr_curve)
 ```
 
 ```{r}
-tp_rate <- 4414/18567
+num_pos <- length(which(mlp$observed == 1))
+n <- nrow(mlp)
+tp_rate <- num_pos / n
 
 pdf('../../figs/fig6/model_comparison_classification.pdf')
 par(pty = 's')
@@ -190,7 +192,7 @@ dev.off()
 
 ```{r}
 combined_pct_pos <- length(which(mlp$observed == 1)) / nrow(mlp)
-tss_pct_pos <- length(which(gkmsvm$observed > 1)) / nrow(gkmsvm)
+tss_pct_pos <- length(which(gkmsvm$observed > 0.25)) / nrow(gkmsvm)
 print(c(combined_pct_pos, tss_pct_pos))
 ```
 
