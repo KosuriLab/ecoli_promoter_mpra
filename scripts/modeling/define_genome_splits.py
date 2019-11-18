@@ -79,10 +79,10 @@ if __name__ == '__main__':
 		Decreases importance of inactive sequences''')
 	parser.add_argument('--classification', action='store_true',
 		help='Split datasets for classification')
-	parser.add_argument('--neg_threshold', type=float, nargs='?', const=1,
-		help='Only consider negatives below this threshold for train/test')
-	parser.add_argument('--pos_threshold', type=float, nargs='?', const=1,
-		help='Only consider positives above this threshold for train/test')
+	# parser.add_argument('--neg_threshold', type=float, nargs='?', const=1,
+	# 	help='Only consider negatives below this threshold for train/test')
+	# parser.add_argument('--pos_threshold', type=float, nargs='?', const=1,
+	# 	help='Only consider positives above this threshold for train/test')
 
 	args = parser.parse_args()
 
@@ -104,8 +104,8 @@ if __name__ == '__main__':
 	train = pd.read_table(args.infile_train, sep='\t', header=None)
 	test = pd.read_table(args.infile_test, sep='\t', header=None)
 
-	train.columns = ['variant', 'expn_med_fitted_scaled', 'start', 'end', 'name']
-	test.columns = ['variant', 'expn_med_fitted_scaled', 'start', 'end', 'name']
+	train.columns = ['variant', 'expn_med_fitted_scaled', 'start', 'end', 'name', 'active']
+	test.columns = ['variant', 'expn_med_fitted_scaled', 'start', 'end', 'name', 'active']
 
 
 	if args.floor:
@@ -142,17 +142,20 @@ if __name__ == '__main__':
 		for i in range(len(train)):
 			 x = train.start.iloc[i]
 			 y = train.end.iloc[i]
-			 value = train.expn_med_fitted_scaled.iloc[i]
+			 # value = train.expn_med_fitted_scaled.iloc[i]
+			 active_flag = train.active.iloc[i]
 			 name = train.name.iloc[i]
 			 seq = train.variant.iloc[i]
 
 			 for j in range(len(splits)):
 			 	if in_range(splits[j], x, y):
 					if split_lookup[splits[j]] == 'train':
-						if value < args.neg_threshold:
+						# if value < args.neg_threshold:
+						if active_flag == 'inactive':
 							label = '0'
 							outfile_train.write(seq + '\t' + label + '\n')
-						elif value >= args.pos_threshold:
+						# elif value >= args.pos_threshold:
+						elif active_flag == 'active':
 							label = '1'
 							outfile_train.write(seq + '\t' + label + '\n')
 		outfile_train.close()
@@ -179,6 +182,7 @@ if __name__ == '__main__':
 			x = test.start.iloc[i]
 			y = test.end.iloc[i]
 			value = test.expn_med_fitted_scaled.iloc[i]
+			active_flag = test.active.iloc[i]
 			name = test.name.iloc[i]
 			seq = test.variant.iloc[i]
 			
@@ -186,10 +190,12 @@ if __name__ == '__main__':
 				if in_range(splits[j], x, y):
 					if split_lookup[splits[j]] == 'test':
 						
-						if value < args.neg_threshold:
+						# if value < args.neg_threshold:
+						if active_flag == 'inactive':
 							label = '0'
 							outfile_test.write(seq + '\t' + label + '\n')
-						elif value >= args.pos_threshold:
+						elif active_flag == 'active':
+						# elif value >= args.pos_threshold:
 							label = '1'
 							outfile_test.write(seq + '\t' + label + '\n')
 		outfile_test.close()

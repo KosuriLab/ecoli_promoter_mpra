@@ -9,7 +9,7 @@ split:
 	python define_genome_splits.py 0.75 4639675 \
 	$(DIR)/tss_scramble_peak_expression_model_format.txt \
 	$(DIR)/tss_scramble_peak_expression_model_format.txt \
-	--classification --neg_threshold 0.24 --pos_threshold 0.25
+	--classification
 
 
 # generate random sequences equal to training set to compute kmer frequency

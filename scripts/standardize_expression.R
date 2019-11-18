@@ -78,16 +78,16 @@ set_scale <- function(df) {
 
 set_std_threshold <- function(df) {
     neg <- filter(df, category == 'neg_control')
-    neg_sd <- sd(neg$expn_med_fitted)
-    neg_median <- median(neg$expn_med_fitted)
+    neg_sd <- sd(neg$expn_med_fitted_scaled)
+    neg_median <- median(neg$expn_med_fitted_scaled)
     threshold <- neg_median + (2 * neg_sd)
     return(threshold)
 }
 
 set_std_threshold_peak <- function(df) {
     neg <- filter(df, category == 'neg_control')
-    neg_mad <- mad(neg$expn_med_fitted)
-    neg_median <- median(neg$expn_med_fitted)
+    neg_mad <- mad(neg$expn_med_fitted_scaled)
+    neg_median <- median(neg$expn_med_fitted_scaled)
     threshold <- neg_median + (3 * neg_mad)
     return(threshold)
 }
@@ -107,6 +107,9 @@ scramble <- scramble %>%
                                     NA),
            relative_exp = RNA_exp_sum_ave / unscrambled_exp)
 
+scramble_threshold <- set_std_threshold(scramble)
+scramble <- scramble %>% 
+    mutate(active = ifelse(expn_med_fitted_scaled >= scramble_threshold, 'active', 'inactive'))
 # create active and inactive columns for TSS and alternate landing pads
 tss_threshold <- set_std_threshold(tss)
 tss <- tss %>% 
@@ -135,9 +138,9 @@ write.table(rlp6, file = '../processed_data/endo_tss/alt_landing_pads/rLP6/rLP6_
 # combine datasets for modeling
 combined <- bind_rows(tss, 
                       select(scramble, variant, expn_med_fitted_scaled,
-                             start=var_left, end=var_right, name),
+                             start=var_left, end=var_right, name, active),
                       peak_tile) %>% 
-    select(variant, expn_med_fitted_scaled, start, end, name)
+    select(variant, expn_med_fitted_scaled, start, end, name, active)
 
 write.table(combined, '../processed_data/combined/tss_scramble_peak_expression_model_format.txt',
             row.names = F, col.names = F, quote = F, sep = '\t')
@@ -146,7 +149,7 @@ write.table(select(combined, variant, expn_med_fitted_scaled),
             row.names = F, col.names = F, quote = F, sep = '\t')
 # just TSS for gkmSVM
 tss %>% 
-    select(variant, expn_med_fitted_scaled, start, end, name) %>% 
+    select(variant, expn_med_fitted_scaled, start, end, name, active) %>% 
     write.table('../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt',
                 row.names = F, col.names = F, quote = F, sep = '\t')
 
