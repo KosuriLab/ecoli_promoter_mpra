@@ -164,8 +164,8 @@ tss_test <- read.table('../../processed_data/endo_tss/lb/model_files/tss_express
                    header = F, sep = '\t', col.names = c('sequence', 'expression'))
 gkmsvm$observed <- tss_test$expression
 
-gkmsvm_pr_curve <- pr.curve(scores.class0 = filter(gkmsvm, observed >= 1)$predicted,
-                     scores.class1 = filter(gkmsvm, observed < 1)$predicted,
+gkmsvm_pr_curve <- pr.curve(scores.class0 = filter(gkmsvm, observed >= 0.25)$predicted,
+                     scores.class1 = filter(gkmsvm, observed < 0.24)$predicted,
                      curve = T)
 plot(gkmsvm_pr_curve)
 ```
@@ -175,7 +175,7 @@ tp_rate <- 4414/18567
 
 pdf('../../figs/fig6/model_comparison_classification.pdf')
 par(pty = 's')
-plot(logit_curve, add=F, color = 'red', auc.main = F, main = '')
+plot(logit_curve, add = F, color = 'red', auc.main = F, main = '')
 plot(logistic_curve, add = T, color = 'aquamarine')
 plot(pls_curve, add = T, color = 'black')
 plot(rf_curve, add=T, color = 'blue')
