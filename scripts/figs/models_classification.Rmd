@@ -85,7 +85,7 @@ calculate_recall <- function(df) {
 ```
 
 ```{r}
-logistic <- read.table('../../processed_data/combined/20191114_kmer_logistic_predictions.txt',
+logistic <- read.table('../../processed_data/combined/20191118_kmer_logistic_predictions.txt',
                        col.names = c('predicted', 'observed'))
 logistic_curve <- pr.curve(scores.class0 = logistic$predicted[logistic$observed == 1],
                            scores.class1 = logistic$predicted[logistic$observed == 0],
@@ -95,7 +95,7 @@ plot(logistic_curve)
 
 
 ```{r}
-pls <- read.table('../../processed_data/combined/20191114_kmer_pls_classification_predictions.txt',
+pls <- read.table('../../processed_data/combined/20191118_kmer_pls_classification_predictions.txt',
                        col.names = c('predicted', 'observed'))
 pls_curve <- pr.curve(scores.class0 = pls$predicted[pls$observed == 1],
                            scores.class1 = pls$predicted[pls$observed == 0],
@@ -104,7 +104,7 @@ plot(pls_curve)
 ```
 
 ```{r}
-rf <- read.table('../../processed_data/combined/20191114_rf_tss_scramble_peak_classification_predictions.txt',
+rf <- read.table('../../processed_data/combined/20191118_rf_tss_scramble_peak_classification_predictions.txt',
                               col.names = c('predicted', 'observed'))
 rf_curve <- pr.curve(scores.class0 = rf$predicted[rf$observed == 1],
                      scores.class1 = rf$predicted[rf$observed == 0],
@@ -114,7 +114,7 @@ plot(rf_curve)
 
 
 ```{r}
-rf_onehot <- read.table('../../processed_data/combined/20191114_rf_onehot_tss_scramble_peak_classification_predictions.txt',
+rf_onehot <- read.table('../../processed_data/combined/20191118_rf_onehot_tss_scramble_peak_classification_predictions.txt',
                               col.names = c('predicted', 'observed')) %>% 
     mutate(predicted = as.numeric(predicted),
            observed = as.numeric(observed)) %>% 
@@ -126,7 +126,7 @@ plot(rf_onehot_curve)
 ```
 
 ```{r}
-mlp <- read.table('../../processed_data/combined/20191114_mlp_tss_scramble_peak_predictions_classification.txt',
+mlp <- read.table('../../processed_data/combined/20191118_mlp_tss_scramble_peak_predictions_classification.txt',
                   col.names = c('predicted', 'observed'))
 mlp_curve <- pr.curve(scores.class0 = mlp$predicted[mlp$observed == 1],
                       scores.class1 = mlp$predicted[mlp$observed == 0],
@@ -136,7 +136,7 @@ plot(mlp_curve)
 
 
 ```{r}
-mlp_3to6 <- read.table('../../processed_data/combined/20191114_mlp_3to6mer_tss_scramble_peak_predictions_classification.txt',
+mlp_3to6 <- read.table('../../processed_data/combined/20191118_mlp_3to6mer_tss_scramble_peak_predictions_classification.txt',
                   col.names = c('predicted', 'observed'))
 mlp_3to6_curve <- pr.curve(scores.class0 = mlp_3to6$predicted[mlp_3to6$observed == 1],
                            scores.class1 = mlp_3to6$predicted[mlp_3to6$observed == 0],
@@ -147,7 +147,7 @@ plot(mlp_3to6_curve)
 "The no-skill line is defined by the total number of positive cases divide by the total number of positive and negative cases."
 
 ```{r}
-nn <- read.table('../../processed_data/combined/20191114_tss_scramble_peak_classification_hyperparam_tuned_predictions.txt',
+nn <- read.table('../../processed_data/combined/20191118_tss_scramble_peak_classification_hyperparam_tuned_predictions.txt',
                  col.names = c('predicted', 'observed'))
 nn_curve <- pr.curve(scores.class0 = nn$predicted[nn$observed == 1],
                      scores.class1 = nn$predicted[nn$observed == 0], curve = T)
