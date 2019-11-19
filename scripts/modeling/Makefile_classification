@@ -104,7 +104,7 @@ split_tss:
 	python define_genome_splits.py 0.75 4639675 \
 	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt \
 	../../processed_data/endo_tss/lb/model_files/tss_expression_model_format.txt \
-	--classification --neg_threshold 0.24 --pos_threshold 0.25
+	--classification
 
 
 gkmsvm: 
