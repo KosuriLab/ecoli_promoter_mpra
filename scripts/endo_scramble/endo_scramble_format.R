@@ -1,5 +1,5 @@
-library(dplyr)
-library(tidyr)
+library(tidyverse)
+#library(tidyr)
 
 options(stringsAsFactors = F)
 
@@ -27,8 +27,14 @@ data <- data %>%
     # calculate genomic position of scramble start and end
     mutate(var_left = ifelse(strand == '+', tss_position - 120, tss_position - 30),
            var_right = ifelse(strand == '+', tss_position + 30, tss_position + 120),
-           scramble_start_pos = var_left + scramble_start,
-           scramble_end_pos = var_left + scramble_end) %>%
+           scramble_start_pos = ifelse(strand == '+',
+                                       var_left + scramble_start, 
+                                       var_right - scramble_start),
+           scramble_end_pos = ifelse(strand == '+', 
+                                     var_left + scramble_end, 
+                                     var_right - scramble_end)) %>%
+           #scramble_start_pos = var_left + scramble_start,
+           #scramble_end_pos = var_left + scramble_end) %>%
     # calculate scramble position relative to TSS
     mutate(scramble_pos_rel_tss = ifelse(is.na(scramble_start_pos),
                                          NA,
@@ -42,6 +48,5 @@ data$category <- "scramble"
 data$category[grep("pos_control", data$name)] <- "pos_control"
 data$category[grep("neg_control", data$name)] <- "neg_control"
 data$category[grep("unscrambled", data$name)] <- "unscrambled"
-data$category[grep("scrambled", data$name)] <- "scramble"
 
 write.table(data, file = outfile, quote = F, row.names = F)

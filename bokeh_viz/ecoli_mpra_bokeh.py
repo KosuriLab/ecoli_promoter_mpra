@@ -13,6 +13,8 @@ import numpy as np
 from math import pi
 from copy import deepcopy
 import sys
+import warnings
+warnings.filterwarnings("ignore")
 
 # change to script directory
 abspath = os.path.abspath(__file__)
@@ -148,7 +150,8 @@ def make_region_genes(genes, start, end):
     return src_gene
 
 
-def make_tss_arrow(tss, start, end, threshold=1, active_color='#2e6eb7', inactive_color='grey', width=8, arrow_length=50):
+def make_tss_arrow(tss, start, end, threshold=1, active_color='#2e6eb7',
+    inactive_color='grey', width=8, arrow_length=50, scaled=True):
 
     # grab TSS within start and end
     tss_region = tss[tss.tss_position.isin(range(start, end))]
@@ -169,16 +172,21 @@ def make_tss_arrow(tss, start, end, threshold=1, active_color='#2e6eb7', inactiv
     
     # assign color based on TSS expression above or below threshold
     tss_color = []
+    tss_type = []
     
     for i in range(len(tss_region)):
         
         expn = tss_region.RNA_exp_sum_ave.iloc[i]
+        if not scaled:
+            expn = tss_region.expn_med_fitted.iloc[i]
         position = tss_region.tss_position.iloc[i]
         
         if expn < threshold:
-            tss_color.append(inactive_color)   
+            tss_color.append(inactive_color)
+            tss_type.append('inactive TSS')
         else:
             tss_color.append(active_color)
+            tss_type.append('active TSS')
         
         if tss_region.strand.iloc[i] == '+':
             # top, bottom, left, right
@@ -189,7 +197,7 @@ def make_tss_arrow(tss, start, end, threshold=1, active_color='#2e6eb7', inactiv
         elif tss_region.strand.iloc[i] == '-':
             quad_coords.append([0, -expn, position, position + width])
             # draw line to the left
-            seg_coords.append([position, -expn, position - arrow_length, -expn])
+            seg_coords.append([position+width, -expn, position - arrow_length, -expn])
             arrow_angle.append(90)
         else:
             raise Exception('Invalid strand')
@@ -204,7 +212,8 @@ def make_tss_arrow(tss, start, end, threshold=1, active_color='#2e6eb7', inactiv
     x1 = [seg_coords[i][2] for i in range(len(seg_coords))],
     y1 = [seg_coords[i][3] for i in range(len(seg_coords))],
     angle = arrow_angle,
-    color = tss_color))
+    color = tss_color,
+    tss_type = tss_type))
     
     return src_tss
 
@@ -238,10 +247,15 @@ def make_region_plot(src, src_gene, src_tss, src_rna, fixed_yaxis=None):
     # flatten list of lists in count column of src, find max value of absolute expression
     frag_count_range = max(map(abs, [x for count in src.data['count'] for x in count]))
     if len(src_rna.data['y_plus']) > 0:
-        rna_count_range = max(max(src_rna.data['y_plus']), max(abs(src_rna.data['y_minus'])))
-    else: 
-        rna_count_range = 0
-
+        max_y_plus = max(src_rna.data['y_plus'])
+    else:
+        max_y_plus = 0
+    if len(src_rna.data['y_minus']) > 0:
+        max_y_minus = max(abs(src_rna.data['y_minus']))
+    else:
+        max_y_minus = 0
+    
+    rna_count_range = max([max_y_plus, max_y_minus])
     count_range = max(frag_count_range, rna_count_range)
 
     if fixed_yaxis:
@@ -287,7 +301,10 @@ def make_region_plot(src, src_gene, src_tss, src_rna, fixed_yaxis=None):
 
 
     # add second y-axis for TSS strength
-    max_tss = max(map(abs, src_tss.data['y0']))
+    if len(src_tss.data['y0']) > 0:
+        max_tss = max(map(abs, src_tss.data['y0']))
+    else:
+        max_tss = 0
     p.extra_y_ranges = {'tss' : Range1d(start=-(max_tss * 4), end=(max_tss * 4))}
     p.add_layout(LinearAxis(y_range_name='tss', axis_label='TSS expression'), 'right')
     
@@ -297,12 +314,32 @@ def make_region_plot(src, src_gene, src_tss, src_rna, fixed_yaxis=None):
     # draw horizontal line for arrow
     p.segment(x0='x0', y0='y0', x1='x1', y1='y1', color='color',
               source=src_tss, line_width=4,  y_range_name='tss')
-    # center of triangle is endpoint of segment
-    tri = p.triangle(x='x1', y='y1', size=9, angle='angle', angle_units='deg',
-        color='color', source=src_tss, y_range_name='tss')
-    legends.append(LegendItem(label='inactive TSS', renderers=[tri], index=9))
-    legends.append(LegendItem(label='active TSS', renderers=[tri], index=0))
+
     
+    # # iteratively graph TSS triangles to make sure they are correctly colored
+    # for i in range(len(src_tss.data['x1'])):
+    #     p.triangle(x=src_tss.data['x1'][i], y=src_tss.data['y1'][i], size=9,
+    #         angle=src_tss.data['angle'][i], angle_units='deg',
+    #         color=src_tss.data['color'][i], y_range_name='tss')
+
+    # split TSS ColumnDataSource into active/inactive so we can graph each TSS arrow
+    # separately with the correct legend symbol and color. Otherwise, for some reason
+    # colors won't work and they will be all the same color
+    tmp = pd.DataFrame(src_tss.data)
+    tmp_inactive = tmp[tmp.tss_type == 'inactive TSS']
+    tmp_active = tmp[tmp.tss_type == 'active TSS']
+    src_tss_inactive = ColumnDataSource(data=tmp_inactive.to_dict(orient='list'))
+    src_tss_active = ColumnDataSource(data=tmp_active.to_dict(orient='list'))
+
+    tri_inactive = p.triangle(x='x1', y='y1', size=9, angle='angle', angle_units='deg',
+        color='color', source=src_tss_inactive, y_range_name='tss')
+    # if there are no active TSSs, do not graph anything and show legend for inactive instead
+    if len(tmp_active) != 0:
+        tri_active = p.triangle(x='x1', y='y1', size=9, angle='angle', angle_units='deg',
+            color='color', source=src_tss_active, y_range_name='tss')
+        legends.append(LegendItem(label='active TSS', renderers=[tri_active]))
+    else:
+        legends.append(LegendItem(label='inactive TSS', renderers=[tri_inactive]))
 
     # plot genes
     p.rect(x='gene_center', y='gene_center_y', width='gene_width', color='gene_color', 
@@ -438,21 +475,21 @@ def export_svg():
 
 # endo TSS expression
 endo_tss_lb = pd.read_csv('../processed_data/endo_tss/lb/rLP5_Endo2_lb_expression_formatted_std.txt',
-                           sep='\t')
+                           sep='\t').sort_values('tss_position')
 
 # LB genomic shearing fragment pileup
 frag_lb_plus = pd.read_csv('../processed_data/frag/lb/plus_frag_pileup.wig',
-                            sep='\t', skiprows=1, names=['position', 'expression'])
+                            sep='\t', skiprows=1, names=['position', 'expression']).sort_values('position')
 
 frag_lb_minus = pd.read_csv('../processed_data/frag/lb/minus_frag_pileup.wig',
-                            sep='\t', skiprows=1, names=['position', 'expression'])
+                            sep='\t', skiprows=1, names=['position', 'expression']).sort_values('position')
 
 # M9 minimal genomic shearing fragment pileup
 frag_m9_plus = pd.read_csv('../processed_data/frag/m9/plus_frag_pileup_M9.wig',
-                            sep='\t', skiprows=1, names=['position', 'expression'])
+                            sep='\t', skiprows=1, names=['position', 'expression']).sort_values('position')
 
 frag_m9_minus = pd.read_csv('../processed_data/frag/m9/minus_frag_pileup_M9.wig',
-                            sep='\t', skiprows=1, names=['position', 'expression'])
+                            sep='\t', skiprows=1, names=['position', 'expression']).sort_values('position')
 
 
 # format frag pileup data

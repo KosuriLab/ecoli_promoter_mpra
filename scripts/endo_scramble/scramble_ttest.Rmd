@@ -116,6 +116,8 @@ ttest_custom <- function(df, df_wt) {
                             filter(df_wt, tss_name == wt_name)) %>% 
         mutate(category_fctr = factor(category)) %>% 
         filter(!is.na(expn), is.finite(expn))
+    # print(wt_name)
+    # print(length(levels(df_with_wt$category_fctr)))
     result <- tryCatch(
         {
             t.test(expn ~ category_fctr, df_with_wt)
@@ -125,6 +127,7 @@ ttest_custom <- function(df, df_wt) {
             return(NA)
         }
     )
+    # result <- t.test(expn ~ category_fctr, df_with_wt)
     return(result)
 }
 
@@ -176,8 +179,12 @@ scramble_ttests %>%
     mutate(chrom = 'U00096.2') %>% 
     left_join(., select(data, name, scramble_start_pos, scramble_end_pos), by = 'name') %>% 
     filter(!is.na(scramble_start_pos)) %>% 
-    select(chrom, scramble_start_pos, scramble_end_pos, name, mean_diff, site_type_ttest) %>% 
-    arrange(scramble_start_pos) %>% 
+    mutate(scramble_left = ifelse(scramble_start_pos > scramble_end_pos, 
+                                  scramble_end_pos, scramble_start_pos),
+           scramble_right = ifelse(scramble_start_pos > scramble_end_pos,
+                                   scramble_start_pos, scramble_end_pos)) %>% 
+    select(chrom, scramble_left, scramble_right, name, mean_diff, site_type_ttest) %>% 
+    arrange(scramble_left) %>% 
     write.table( '../../processed_data/endo_scramble/scrambles_ttest_increased.bed',
             sep = '\t', col.names = F, row.names = F, quote = F)
 
@@ -186,8 +193,12 @@ scramble_ttests %>%
     mutate(chrom = 'U00096.2') %>% 
     left_join(., select(data, name, scramble_start_pos, scramble_end_pos), by = 'name') %>% 
     filter(!is.na(scramble_start_pos)) %>% 
-    select(chrom, scramble_start_pos, scramble_end_pos, name, mean_diff, site_type_ttest) %>% 
-    arrange(scramble_start_pos) %>% 
+    mutate(scramble_left = ifelse(scramble_start_pos > scramble_end_pos, 
+                                  scramble_end_pos, scramble_start_pos),
+           scramble_right = ifelse(scramble_start_pos > scramble_end_pos,
+                                   scramble_start_pos, scramble_end_pos)) %>% 
+    select(chrom, scramble_left, scramble_right, name, mean_diff, site_type_ttest) %>% 
+    arrange(scramble_left) %>% 
     write.table( '../../processed_data/endo_scramble/scrambles_ttest_reduced.bed',
             sep = '\t', col.names = F, row.names = F, quote = F)
 ```
